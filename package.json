@@ -14,7 +14,6 @@
     "@ffmpeg/core-mt": "^0.12.10",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
-    "@vercel/blob": "^2.6.1",
     "idb-keyval": "^6.2.2",
     "kokoro-js": "^1.2.1",
     "next": "^15.5.0",
