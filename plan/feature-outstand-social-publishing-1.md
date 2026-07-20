@@ -1,28 +1,42 @@
 ---
-goal: Add explicit multi-platform social publishing through Outstand with temporary Vercel Blob staging
-version: 1.1
+goal: Add explicit multi-platform social publishing through Outstand signed media uploads
+version: 1.2
 date_created: 2026-07-20
 last_updated: 2026-07-20
 owner: fragomen-mobility-pilot
-status: 'Planned'
+status: 'In Progress'
 tags:
   - feature
   - outstand
   - social-publishing
-  - vercel-blob
+  - direct-upload
   - security
 ---
 
 # Introduction
 
-![Status: Planned](https://img.shields.io/badge/status-Planned-blue)
+![Status: In Progress](https://img.shields.io/badge/status-In%20Progress-yellow)
 
 Add a sixth Publish step to the VideoMaker workflow. The user selects connected
 social accounts, reviews platform-specific recommendations and settings, and
-clicks Publish before any external post is created. The rendered MP4 uploads
-directly from the browser to temporary Vercel Blob storage. Outstand then uses
-the Blob URL as the media source for immediate publishing, so large video bytes
-never pass through a Vercel Function request body.
+clicks Publish before any external post is created. The application requests an
+Outstand signed media URL, uploads the rendered MP4 directly from the browser,
+confirms the resulting media ID, and creates the post. Large video bytes never
+pass through a Vercel Function request body.
+
+### Architecture Amendment
+
+Version 1.2 supersedes the Vercel Blob handoff in version 1.1. Outstand's
+documented create-post contract accepts media IDs produced by its Media API; it
+does not document arbitrary external media URLs as create-post input. The
+implemented flow therefore uses Outstand's signed direct-upload URL and
+`mediaIds`. All requirements, tasks, tests, dependencies, files, risks, and
+assumptions below that require Vercel Blob staging are withdrawn.
+
+This amendment keeps the original safety properties: rendering remains local,
+video bytes bypass Next.js Functions, no upload starts before explicit
+confirmation, and provider credentials remain server-only. Pinterest publishing
+is disabled until board discovery and validated `board_id` selection are added.
 
 ### Rendering Decision
 
@@ -55,25 +69,21 @@ sequenceDiagram
     participant User
     participant Browser
     participant App as Next.js API
-    participant Blob as Vercel Blob
     participant Outstand
     participant Social as Social platforms
 
     User->>Browser: Render MP4
     User->>Browser: Select accounts and click Publish
-    Browser->>App: Request scoped upload token
+    Browser->>App: Request Outstand media upload URL
     App->>App: Verify signed gate session
-    App-->>Browser: Short-lived video-only token
-    Browser->>Blob: Multipart upload MP4
-    Blob-->>Browser: Random public Blob URL
-    Browser->>App: Submit accounts, content, settings, and Blob metadata
-    App->>Outstand: Create immediate post with Blob media URL
-    Outstand->>Blob: Read staged MP4
+    App-->>Browser: Short-lived signed upload URL and media ID
+    Browser->>Outstand: PUT completed MP4 directly
+    Browser->>App: Confirm media ID and submit reviewed post
+    App->>Outstand: Confirm media and create immediate post with mediaIds
     Outstand->>Social: Publish independently per account
     Browser->>App: Poll post status
     App->>Outstand: Read per-account outcomes
     App-->>Browser: Pending, published, or failed outcomes
-    App->>Blob: Delete after terminal outcomes
 ```
 
 ## 1. Requirements & Constraints
@@ -87,31 +97,26 @@ sequenceDiagram
 * REQ-004: Provide Connect account and Change account actions through Outstand's
   OAuth URL flow. Never collect social-network passwords in the application.
 * REQ-005: Support X, LinkedIn, Instagram, TikTok, Facebook, Threads, Bluesky,
-  YouTube, Pinterest, Google Business Profile, and Vimeo when matching connected
-  accounts exist.
+  YouTube, Google Business Profile, and Vimeo when matching connected accounts
+  exist. Defer Pinterest until board selection is implemented.
 * REQ-006: Require an explicit Publish button click after the user reviews the
   selected accounts, caption, title, media profile, disclosures, privacy, and
   platform-specific settings.
-* REQ-007: Publish immediately in version 1. Do not implement scheduled posts,
-  because temporary Blob retention would otherwise need to span the schedule.
+* REQ-007: Publish immediately in version 1. Do not implement scheduled posts.
 * REQ-008: Show upload progress, Outstand submission progress, and independent
   pending, published, or failed results for every selected social account.
 * REQ-009: Preserve failed-account details and permit retrying only failed
   accounts without duplicating successful posts.
-* REQ-010: Upload the rendered `video/mp4` directly from the browser to Vercel
-  Blob. A Vercel Function may authorize the upload but must not receive or proxy
-  the MP4 bytes.
-* REQ-011: Use multipart client uploads for MP4 files larger than 100 MB and
-  expose upload progress and cancellation in the Publish step.
-* REQ-012: Use a public Vercel Blob store because Outstand must fetch the media
-  URL without receiving Vercel credentials. Generate a random suffix for every
-  pathname and never display the URL outside the authenticated publishing flow.
-* REQ-013: Delete the staged Blob after all selected accounts reach a terminal
-  outcome. Retain it while any account is pending and retain failed uploads for
-  retry until the 24-hour maximum staging window expires.
-* REQ-014: Perform an opportunistic stale-Blob sweep during authorized upload,
-  publish, and status requests. Delete entries under `social-staging/` whose
-  pathname timestamp is older than 24 hours.
+* REQ-010: Request an Outstand signed upload URL through an authenticated route,
+  then upload the rendered `video/mp4` directly from the browser to that URL.
+  A Vercel Function must not receive or proxy the MP4 bytes.
+* REQ-011: Expose direct upload progress in the Publish step and reject videos
+  above the configured 500 MB application limit before confirmation.
+* REQ-012: Confirm the Outstand media ID server-side before creating a post and
+  pass only confirmed `mediaIds` to the create-post endpoint.
+* REQ-013: Retain the confirmed media ID in memory for failed-account retries so
+  successful accounts are never targeted twice.
+* REQ-014: Allow bounded status polling to resume without creating another post.
 * REQ-015: Keep the rendered Blob in an in-memory render-output registry rather
   than Zustand, IndexedDB, local storage, or a JSON API payload.
 * REQ-016: Recommend the current 16:9 profile for YouTube, LinkedIn, Facebook,
@@ -132,31 +137,26 @@ sequenceDiagram
 * REQ-022: Display a local-render readiness check before rendering. Warn when
   cross-origin isolation, `SharedArrayBuffer`, required browser APIs, memory, or
   supported browser conditions are unavailable.
-* REQ-023: Preserve the local MP4 download when rendering succeeds but Blob or
-  Outstand publishing is unavailable.
+* REQ-023: Preserve the local MP4 download when rendering succeeds but Outstand
+  publishing is unavailable.
 * REQ-024: Record local render duration, output duration, output size, completion,
   cancellation, and a non-sensitive failure category for evaluating whether a
   remote renderer is justified. Do not record source media or generated text.
 * SEC-001: Revoke the Outstand API key disclosed in chat before implementation.
   Configure only a replacement value as the server-side `OUTSTAND_API_KEY`.
-* SEC-002: Store `OUTSTAND_API_KEY` and `BLOB_READ_WRITE_TOKEN` only in Vercel
-  environment variables and local ignored environment files. Never use a
-  `NEXT_PUBLIC_*` variable for either secret.
+* SEC-002: Store `OUTSTAND_API_KEY` only in Vercel environment variables and
+  local ignored environment files. Never use a `NEXT_PUBLIC_*` variable.
 * SEC-003: Replace the current non-cryptographic gate token with an HMAC-SHA-256
-  signed session value before enabling Blob token issuance or Outstand write
-  operations. Verify signatures with a timing-safe comparison.
+  signed session value before enabling Outstand write operations. Verify
+  signatures with a timing-safe comparison.
 * SEC-004: Require a valid signed gate session for account listing, account
-  health, OAuth URL generation, Blob upload authorization, post creation,
-  status polling, retry, and Blob deletion.
-* SEC-005: Disable social publishing when `APP_PASSWORD`, `OUTSTAND_API_KEY`, or
-  the Blob credentials are absent. Return configuration state without returning
-  secret values.
-* SEC-006: Restrict Blob client tokens to `video/mp4`, a configurable maximum of
-  500 MB, the `social-staging/` prefix, random suffixes, no overwrite, and a
-  10-minute token lifetime.
-* SEC-007: Validate that every submitted media URL belongs to the configured
-  Vercel Blob store and starts with the authorized staging prefix before sending
-  it to Outstand or deleting it.
+  health, OAuth URL generation, media upload authorization, media confirmation,
+  post creation, status polling, and retry.
+* SEC-005: Disable social publishing when `APP_PASSWORD` or `OUTSTAND_API_KEY`
+  is absent. Return configuration state without returning secret values.
+* SEC-006: Request Outstand upload URLs only for sanitized `.mp4` filenames and
+  confirm a positive size no larger than the configured 500 MB maximum.
+* SEC-007: Validate every Outstand media, account, and post ID before use.
 * SEC-008: Call `GET /v1/social-accounts` with `includeTokens=false`. Never return
   provider OAuth tokens to the browser.
 * SEC-009: Validate all browser input with Zod, apply same-origin checks to write
@@ -167,11 +167,9 @@ sequenceDiagram
   account selection.
 * CON-002: Do not add `middleware.ts` or restore the deleted Vercel function
   configuration. Protect each new route through shared server helpers.
-* CON-003: Do not use a private Blob store for version 1, because relaying a
-  private video through a Vercel Function would reintroduce size, duration, and
-  transfer risk.
-* CON-004: Do not implement Vercel Blob as permanent video storage. Its only
-  purpose is the time-bounded handoff to Outstand and the selected platforms.
+* CON-003: Do not proxy video bytes through a Vercel Function.
+* CON-004: Do not add an intermediate public storage layer unless a documented
+  provider contract requires it.
 * CON-005: Do not claim that one render is optimal for incompatible aspect
   ratios. Warn clearly and require rerendering when the selected destinations
   need another profile.
@@ -195,25 +193,25 @@ sequenceDiagram
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
 | TASK-001 | Revoke the disclosed Outstand key, create a replacement, and configure `OUTSTAND_API_KEY` only in Vercel Production, Preview, and Development environments |  |  |
-| TASK-002 | Create and connect a public Vercel Blob store to project `fragomen-mobility`; retain the generated `BLOB_READ_WRITE_TOKEN`, `BLOB_STORE_ID`, and webhook verification variables only in Vercel |  |  |
-| TASK-003 | Add sanitized `OUTSTAND_API_KEY`, `BLOB_READ_WRITE_TOKEN`, `BLOB_STORE_ID`, and `SOCIAL_VIDEO_MAX_BYTES=524288000` entries to `env.example` |  |  |
-| TASK-004 | Replace `expectedToken()` in `lib/server/gate.ts` with HMAC-SHA-256 session creation and timing-safe verification derived from `APP_PASSWORD`; update `app/api/gate/route.ts` to set `Secure` in production |  |  |
-| TASK-005 | Add `requirePublishingSession()` and same-origin validation in `lib/server/publishing-auth.ts`; reject publishing operations when `APP_PASSWORD` is not configured |  |  |
-| TASK-006 | Add bounded per-session upload-token and publish throttles in `lib/server/throttle.ts` |  |  |
+| TASK-002 | Configure the replacement `OUTSTAND_API_KEY` only in Vercel Production, Preview, and Development environments |  |  |
+| TASK-003 | Add sanitized `OUTSTAND_API_KEY` and `SOCIAL_VIDEO_MAX_BYTES=524288000` entries to `env.example` | Yes | 2026-07-20 |
+| TASK-004 | Replace `expectedToken()` in `lib/server/gate.ts` with HMAC-SHA-256 session creation and timing-safe verification derived from `APP_PASSWORD`; update `app/api/gate/route.ts` to set `Secure` in production | Yes | 2026-07-20 |
+| TASK-005 | Add `requirePublishingSession()` and same-origin validation in `lib/server/publishing-auth.ts`; reject publishing operations when `APP_PASSWORD` is not configured | Yes | 2026-07-20 |
+| TASK-006 | Add bounded upload and publish throttles in `lib/server/throttle.ts` | Yes | 2026-07-20 |
 
 ### Implementation Phase 2
 
-* GOAL-002: Add temporary direct-to-Blob staging without server-side video
-  transfer.
+* GOAL-002: Add direct-to-Outstand media transfer without server-side video
+  bytes.
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-007 | Install `@vercel/blob` and preserve the existing FFmpeg postinstall behavior |  |  |
-| TASK-008 | Add `app/api/publish/blob/route.ts` using `handleUpload()`; authorize in `onBeforeGenerateToken`, allow only `video/mp4`, set the 500 MB cap, set a 10-minute expiry, require `social-staging/<unix-ms>-<project-id>.mp4`, and enable random suffixes |  |  |
-| TASK-009 | Validate the Blob completion callback and return only pathname, URL, ETag, content type, and size metadata required by the client |  |  |
-| TASK-010 | Add `lib/server/blob-staging.ts` with configured-store URL validation, `head()`, `del()`, and paginated stale-prefix cleanup operations |  |  |
-| TASK-011 | Add `lib/render-output.ts` as a module-scoped in-memory registry that replaces prior object URLs safely and exposes the latest `RenderOutput.blob` to the Publish step |  |  |
-| TASK-012 | Update `components/RenderStep.tsx` to register the successful render output without placing the Blob in Zustand or IndexedDB |  |  |
+| TASK-007 | Add authenticated media upload authorization and confirmation routes using Outstand's Media API | Yes | 2026-07-20 |
+| TASK-008 | Upload the MP4 directly from the browser to Outstand's signed URL with content type and progress reporting | Yes | 2026-07-20 |
+| TASK-009 | Validate media ID, status, content type, and size before post creation | Yes | 2026-07-20 |
+| TASK-010 | Enforce the 500 MB application limit and sanitized `.mp4` filenames | Yes | 2026-07-20 |
+| TASK-011 | Add `lib/render-output.ts` as a module-scoped in-memory registry that replaces prior object URLs safely and exposes the latest `RenderOutput.blob` to the Publish step | Yes | 2026-07-20 |
+| TASK-012 | Update `components/RenderStep.tsx` to register the successful render output without placing the Blob in Zustand or IndexedDB | Yes | 2026-07-20 |
 
 ### Implementation Phase 3
 
@@ -221,15 +219,15 @@ sequenceDiagram
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-013 | Add exact Outstand account, OAuth, post, media, and per-account status contracts in `lib/outstand/types.ts` |  |  |
-| TASK-014 | Add `lib/server/outstand.ts` with Bearer authentication, JSON validation, abort timeouts, safe error mapping, and methods for connected accounts, health, auth URL, post creation, and post details |  |  |
-| TASK-015 | Add `app/api/publish/accounts/route.ts` to return connected accounts with `includeTokens=false` and normalized health metadata |  |  |
-| TASK-016 | Add `app/api/publish/connect/route.ts` to request an Outstand OAuth URL for an allowlisted network and a fixed application callback URL |  |  |
-| TASK-017 | Add `app/create/publish/callback/page.tsx` to handle OAuth success or failure, refresh connected accounts, and return to Publish without posting |  |  |
-| TASK-018 | Handle Bluesky separately with an explicit unsupported-in-app message in version 1 because its app-password flow would require collecting a social credential; allow already connected Bluesky accounts to publish |  |  |
-| TASK-019 | Add `app/api/publish/posts/route.ts` to revalidate account IDs, Blob metadata, content, and settings, then create an immediate Outstand post using the staged Blob URL |  |  |
-| TASK-020 | Add `app/api/publish/posts/[id]/route.ts` to return normalized per-account outcomes and delete the staged Blob when every selected account is terminal and no retry is pending |  |  |
-| TASK-021 | Add failed-account retry handling that targets only failed account IDs and retains the same staged Blob until success, explicit abandonment, or 24-hour expiry |  |  |
+| TASK-013 | Add exact Outstand account, OAuth, post, media, and per-account status contracts in `lib/outstand/types.ts` | Yes | 2026-07-20 |
+| TASK-014 | Add `lib/server/outstand.ts` with Bearer authentication, JSON validation, abort timeouts, safe error mapping, and methods for connected accounts, health, auth URL, media, post creation, and post details | Yes | 2026-07-20 |
+| TASK-015 | Add `app/api/publish/accounts/route.ts` to return connected accounts with `includeTokens=false` and normalized health metadata | Yes | 2026-07-20 |
+| TASK-016 | Add `app/api/publish/connect/route.ts` to request an Outstand OAuth URL for an allowlisted network and a fixed application callback URL | Yes | 2026-07-20 |
+| TASK-017 | Add `app/create/publish/callback/page.tsx` to handle OAuth success or failure, refresh connected accounts through a popup, and return to Publish without posting | Yes | 2026-07-20 |
+| TASK-018 | Handle Bluesky separately with an explicit unsupported-in-app connection message; allow already connected Bluesky accounts to publish | Yes | 2026-07-20 |
+| TASK-019 | Add `app/api/publish/posts/route.ts` to revalidate account IDs, content, and confirmed media IDs, then create an immediate Outstand post | Yes | 2026-07-20 |
+| TASK-020 | Add `app/api/publish/posts/[id]/route.ts` to return normalized per-account outcomes and support resumable polling | Yes | 2026-07-20 |
+| TASK-021 | Add failed-account retry handling that targets only failed account IDs and reuses the confirmed media ID | Yes | 2026-07-20 |
 
 ### Implementation Phase 4
 
@@ -242,9 +240,9 @@ sequenceDiagram
 | TASK-023 | Add serializable account selections, shared caption, per-platform overrides, settings, and publish-result state to `lib/types.ts` and `lib/store.ts`; exclude secrets, OAuth tokens, and media bytes |  |  |
 | TASK-024 | Add `components/PublishStep.tsx` with account identity, profile image, health, platform selection, Change account, refresh, caption fields, settings, validation warnings, and review summary |  |  |
 | TASK-025 | Add stable upload, submit, pending, partial-success, complete, failed, retry, cancel, and expired-media states with progress indicators and accessible status announcements |  |  |
-| TASK-026 | Add a final confirmation dialog that names every target account and states that clicking Publish sends the video externally; invoke upload and post creation only after confirmation |  |  |
-| TASK-027 | Extend `WizardStep`, `Stepper`, and `app/create/page.tsx` with step 6, Publish; preserve Download as a valid terminal action when publishing is unavailable |  |  |
-| TASK-028 | Revise local-only privacy text to state that source media and rendering remain local, while the final MP4 is temporarily uploaded only after Publish is confirmed |  |  |
+| TASK-026 | Add a final confirmation dialog that names every target account and states that clicking Publish sends the video externally; invoke upload and post creation only after confirmation | Yes | 2026-07-20 |
+| TASK-027 | Extend `WizardStep`, `Stepper`, and `app/create/page.tsx` with step 6, Publish; preserve Download as a valid terminal action when publishing is unavailable | Yes | 2026-07-20 |
+| TASK-028 | Revise privacy text to state that source media and rendering remain local, while the final MP4 is uploaded only after Publish is confirmed | Yes | 2026-07-20 |
 
 ### Implementation Phase 5
 
@@ -253,13 +251,13 @@ sequenceDiagram
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-029 | Add unit tests for platform validation, signed gate sessions, Blob URL allowlisting, account-ID resolution, status normalization, retry targeting, and stale cleanup selection |  |  |
-| TASK-030 | Add route tests proving unauthenticated requests, wrong content types, oversized files, foreign Blob URLs, unknown account IDs, invalid settings, and duplicate submissions are rejected |  |  |
-| TASK-031 | Add browser tests for account display, OAuth return, profile mismatch, explicit confirmation, direct multipart upload, progress, partial failure, retry, and final cleanup |  |  |
+| TASK-029 | Add unit tests for platform validation, signed gate sessions, account-ID resolution, status normalization, retry targeting, and media validation |  |  |
+| TASK-030 | Add route tests proving unauthenticated requests, invalid media IDs, oversized files, unknown account IDs, invalid settings, and duplicate submissions are rejected |  |  |
+| TASK-031 | Add browser tests for account display, popup OAuth return, profile mismatch, explicit confirmation, direct upload, progress, partial failure, retry, and resumable polling |  |  |
 | TASK-032 | Run `npm run build`, the added test suite, and a production deployment smoke test without using real social accounts |  |  |
 | TASK-033 | Run one user-approved live post to a designated test account, verify the native platform URL and video playback, and delete the test post if requested |  |  |
-| TASK-034 | Verify the staged Blob is removed after terminal status and that an intentionally abandoned test Blob is removed by the next authorized stale sweep after its test expiry |  |  |
-| TASK-035 | Update `README.md` with setup, account connection, temporary-storage behavior, limits, troubleshooting, data retention, and secret-rotation instructions |  |  |
+| TASK-034 | Verify Outstand media retention and deletion behavior for successful and abandoned uploads |  |  |
+| TASK-035 | Update `README.md` with setup, account connection, direct-upload behavior, limits, troubleshooting, data retention, and secret-rotation instructions |  |  |
 | TASK-036 | Update this plan with completion dates, validation evidence, final platform coverage, and any accepted deviations |  |  |
 | TASK-037 | Add a pre-render capability check for cross-origin isolation, `SharedArrayBuffer`, required browser APIs, and supported-browser conditions; preserve MP4 download when publishing services are unavailable |  |  |
 | TASK-038 | Add privacy-preserving local render measurements for duration, output duration, output size, completion, cancellation, and categorized failure without storing source media or generated content |  |  |
@@ -271,9 +269,8 @@ sequenceDiagram
   Rejected because Vercel recommends client uploads above 4.5 MB, and proxying
   video bytes would add request-body, memory, timeout, and transfer-cost risk.
 * ALT-002: Upload the browser Blob directly to Outstand's signed media URL.
-  This is the leanest transfer path and remains a viable fallback, but it does
-  not satisfy the requested Vercel staging layer or provide a retryable source
-  after the browser session ends.
+  Selected because this is Outstand's documented Media API flow and returns the
+  media ID required by create-post requests.
 * ALT-003: Use a private Vercel Blob and proxy reads to Outstand. Rejected
   because private delivery requires a Vercel Function, which reintroduces the
   large-response and execution-duration risks the design is intended to remove.
@@ -294,32 +291,28 @@ sequenceDiagram
 
 ## 4. Dependencies
 
-* DEP-001: `@vercel/blob` for browser client uploads, multipart transfer,
-  metadata checks, listing, and deletion
-* DEP-002: A public Vercel Blob store connected to Vercel project
-  `fragomen-mobility`
-* DEP-003: A replacement Outstand API key configured as `OUTSTAND_API_KEY`
-* DEP-004: At least one healthy social account connected in Outstand
-* DEP-005: `APP_PASSWORD` configured for signed publishing authorization
-* DEP-006: Existing browser FFmpeg rendering and 16:9, 9:16, and 1:1 profiles
-* DEP-007: Existing Zod, Zustand, App Router, and route-level throttle patterns
+* DEP-001: A replacement Outstand API key configured as `OUTSTAND_API_KEY`
+* DEP-002: At least one healthy social account connected in Outstand
+* DEP-003: `APP_PASSWORD` configured for signed publishing authorization
+* DEP-004: Existing browser FFmpeg rendering and 16:9, 9:16, and 1:1 profiles
+* DEP-005: Existing Zustand, App Router, and route-level throttle patterns
 
 ## 5. Files
 
-* FILE-001: `package.json` and `package-lock.json`, add Vercel Blob and test
-  dependencies and scripts
+* FILE-001: `package.json` and `package-lock.json`, preserve the existing runtime
+  dependencies
 * FILE-002: `env.example`, document sanitized publishing configuration
 * FILE-003: `lib/server/gate.ts` and `app/api/gate/route.ts`, harden the signed
   publishing session
 * FILE-004: `lib/server/publishing-auth.ts`, centralize route authorization and
   same-origin checks
-* FILE-005: `lib/server/blob-staging.ts`, validate, inspect, clean, and delete
-  temporary Blob objects
+* FILE-005: `app/api/publish/media/route.ts` and
+  `app/api/publish/media/confirm/route.ts`, authorize and confirm Outstand media
 * FILE-006: `lib/render-output.ts`, retain the latest rendered Blob in memory
 * FILE-007: `lib/outstand/types.ts` and `lib/server/outstand.ts`, implement typed
   server-only Outstand access
 * FILE-008: `config/social-platforms.ts`, define platform profiles and settings
-* FILE-009: `app/api/publish/blob/route.ts`, authorize direct client uploads
+* FILE-009: `components/PublishStep.tsx`, perform direct signed media uploads
 * FILE-010: `app/api/publish/accounts/route.ts`, list safe account metadata
 * FILE-011: `app/api/publish/connect/route.ts`, begin account OAuth
 * FILE-012: `app/api/publish/posts/route.ts`, validate and create posts
@@ -336,12 +329,12 @@ sequenceDiagram
 
 ## 6. Testing
 
-* TEST-001: Verify MP4 bytes travel from the browser directly to Vercel Blob and
-  do not appear in any Next.js API request body.
-* TEST-002: Verify uploads above 100 MB use multipart transfer and recover from a
-  retried part without restarting the full upload.
-* TEST-003: Verify Blob tokens reject unauthenticated sessions, non-MP4 content,
-  oversized files, invalid prefixes, and expired tokens.
+* TEST-001: Verify MP4 bytes travel from the browser directly to Outstand's
+  signed upload URL and do not appear in any Next.js API request body.
+* TEST-002: Verify direct uploads report progress and preserve local download on
+  transfer failure.
+* TEST-003: Verify media authorization and confirmation reject unauthenticated
+  sessions, invalid IDs, invalid sizes, and oversized files.
 * TEST-004: Verify only metadata without OAuth tokens is returned for connected
   accounts and account health is visible.
 * TEST-005: Verify Change account opens Outstand OAuth, returns to Publish,
@@ -354,22 +347,22 @@ sequenceDiagram
   user to rerender without losing caption or account selections.
 * TEST-009: Verify mixed published, failed, and pending account results display
   independently and retry targets failed accounts only.
-* TEST-010: Verify a staged Blob remains readable while any result is pending and
-  is deleted after all selected accounts are terminal.
-* TEST-011: Verify stale sweeps ignore unrelated paths and active Blob objects and
-  delete only `social-staging/` entries older than 24 hours.
-* TEST-012: Verify build output contains no Outstand key, Blob write token,
-  provider OAuth token, or rendered video bytes.
+* TEST-010: Verify status monitoring can resume after a bounded polling window
+  without creating another post.
+* TEST-011: Verify failed-only retry reuses the confirmed media ID and excludes
+  every account that already published.
+* TEST-012: Verify build output contains no Outstand key, provider OAuth token,
+  signed media URL, or rendered video bytes.
 * TEST-013: Verify the production app remains cross-origin isolated and existing
   rendering, download, TTS, and rerender flows still pass.
 * TEST-014: Verify the native test post contains playable video with correct
   aspect ratio, caption, title, privacy, and disclosure settings.
 * TEST-015: Verify local rendering uploads no source photo, clip, voice track,
   subtitle intermediate, or FFmpeg temporary file to the application server.
-* TEST-016: Verify closing or cancelling a local render leaves no staged Vercel
-  Blob and does not create an Outstand post.
+* TEST-016: Verify closing or cancelling a local render does not request an
+  Outstand media URL or create a post.
 * TEST-017: Verify unsupported browser capabilities block rendering with a clear
-  recovery message and do not begin a Blob upload.
+  recovery message and do not begin an Outstand upload.
 * TEST-018: Verify render measurements contain only duration, output size,
   completion state, cancellation state, and a categorized error code.
 * TEST-019: Benchmark one representative project on supported desktop and mobile
@@ -378,17 +371,15 @@ sequenceDiagram
 
 ## 7. Risks & Assumptions
 
-* RISK-001: Public Blob URLs are bearer-like links. Random suffixes, authenticated
-  token issuance, short retention, strict prefix validation, and prompt deletion
-  reduce exposure, but the URL remains readable by anyone who obtains it.
-* RISK-002: Vercel Blob has no per-object automatic TTL in the selected design.
-  Terminal-status deletion and opportunistic stale sweeps provide cleanup, but a
-  Blob can remain until the next authorized request if a browser is abandoned.
-* RISK-003: Deleting too early can break asynchronous platform ingestion. Keep
-  media until every selected Outstand account is terminal; verify this timing
-  with test accounts before reducing retention further.
-* RISK-004: A public Blob download incurs Vercel Blob transfer and edge usage.
-  Monitor Blob observability and keep the 24-hour cap.
+* RISK-001: Outstand signed upload URLs are bearer credentials. Return them only
+  to authenticated same-origin requests and never log or persist them.
+* RISK-002: A confirmed Outstand media object can outlive an abandoned browser
+  session. Provider retention and deletion behavior must be verified before the
+  live pilot expands beyond a trusted small group.
+* RISK-003: A browser refresh loses the in-memory rendered MP4 and confirmed
+  media ID. Keep account OAuth in a popup and preserve local download.
+* RISK-004: Large direct uploads depend on browser and Outstand transfer limits.
+  Enforce the application limit and report transfer failures without posting.
 * RISK-005: Platform constraints and Outstand fields can change. Keep the
   platform matrix versioned and reject unknown settings instead of forwarding
   them.
@@ -399,8 +390,8 @@ sequenceDiagram
   health-check the account before enabling its selection.
 * RISK-008: Outstand may partially publish a multi-account post. Store and render
   each account outcome and never retry the whole selection automatically.
-* RISK-009: Hobby-plan Blob limits can temporarily disable access after usage is
-  exhausted. Detect provider errors and preserve local download as the fallback.
+* RISK-009: Outstand usage limits can temporarily disable publishing. Detect
+  provider errors and preserve local download as the fallback.
 * RISK-010: Local rendering consumes user CPU, memory, and battery and can be
   interrupted by tab closure, device sleep, browser memory pressure, or thermal
   throttling. Provide progress, cancellation, capability checks, and rerun
@@ -411,11 +402,10 @@ sequenceDiagram
 * RISK-012: A future remote renderer would expand the privacy and security scope
   by uploading source media and would require durable jobs, private storage,
   retention controls, worker isolation, and additional operational cost.
-* ASSUMPTION-001: Outstand accepts an externally reachable media URL in a post
-  container and fetches it during immediate publication, as shown in its current
-  post examples.
-* ASSUMPTION-002: Immediate posts reach a terminal Outstand outcome within the
-  24-hour staging window under normal platform operation.
+* ASSUMPTION-001: Outstand accepts confirmed Media API IDs in create-post
+  requests, as specified by its current documentation.
+* ASSUMPTION-002: Immediate posts normally reach a terminal Outstand outcome
+  within the resumable polling period.
 * ASSUMPTION-003: The application remains a single-user or trusted-small-group
   deployment protected by `APP_PASSWORD`; multi-tenant identity is out of scope.
 * ASSUMPTION-004: The user will choose and approve the first real test account
@@ -424,12 +414,10 @@ sequenceDiagram
 ## 8. Related Specifications / Further Reading
 
 * [Current Vercel deployment plan](./infrastructure-videomaker-vercel-1.md)
-* [Vercel Blob client uploads](https://vercel.com/docs/vercel-blob/client-upload)
-* [Vercel Blob SDK](https://vercel.com/docs/vercel-blob/using-blob-sdk)
-* [Vercel Blob security](https://vercel.com/docs/vercel-blob/security)
-* [Vercel Blob usage and pricing](https://vercel.com/docs/vercel-blob/usage-and-pricing)
 * [Outstand getting started](https://www.outstand.so/docs/getting-started)
 * [Outstand connected social accounts](https://www.outstand.so/docs/list-connected-social-accounts)
 * [Outstand OAuth URL](https://www.outstand.so/docs/get-social-network-authentication-url)
+* [Outstand media upload URL](https://www.outstand.so/docs/get-upload-url)
+* [Outstand media confirmation](https://www.outstand.so/docs/confirm-upload)
 * [Outstand create post](https://www.outstand.so/docs/create-a-post)
 * [Outstand post details](https://www.outstand.so/docs/get-post-details)
