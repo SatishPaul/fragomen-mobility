@@ -43,6 +43,8 @@ export function PublishStep() {
   const { format, render, publish, setPublish } = useProject();
   const [connectNetwork, setConnectNetwork] = useState<SocialNetwork>("instagram");
   const [outcomes, setOutcomes] = useState<PublishOutcome[]>([]);
+  const [confirmedMediaId, setConfirmedMediaId] = useState<string | null>(null);
+  const [activePostId, setActivePostId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const platforms = platformsForFormat(format);
   const output = getLatestRenderOutput();
@@ -65,6 +67,16 @@ export function PublishStep() {
     return () => { cancelled = true; };
   }, [refreshKey, render.status, setPublish]);
 
+  useEffect(() => {
+    function handleOAuthReturn(event: MessageEvent) {
+      if (event.origin === window.location.origin && event.data?.type === "outstand-oauth-return") {
+        setRefreshKey((key) => key + 1);
+      }
+    }
+    window.addEventListener("message", handleOAuthReturn);
+    return () => window.removeEventListener("message", handleOAuthReturn);
+  }, []);
+
   function toggleAccount(id: string) {
     const selectedAccountIds = publish.selectedAccountIds.includes(id)
       ? publish.selectedAccountIds.filter((accountId) => accountId !== id)
@@ -73,29 +85,62 @@ export function PublishStep() {
   }
 
   async function connectAccount() {
+    const popup = window.open("", "outstand-oauth", "width=720,height=800");
+    if (!popup) {
+      setPublish({ error: "Allow popups to connect a social account." });
+      return;
+    }
     try {
       const { url } = await api<{ url: string }>("/api/publish/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ network: connectNetwork }),
       });
-      window.location.assign(url);
+      popup.location.href = url;
     } catch (error) {
+      popup.close();
       setPublish({ error: error instanceof Error ? error.message : "Unable to connect the account." });
     }
   }
 
   async function pollPost(postId: string): Promise<void> {
-    for (let attempt = 0; attempt < 45; attempt += 1) {
+    setActivePostId(postId);
+    for (let attempt = 0; attempt < 90; attempt += 1) {
       const result = await api<{ accounts: PublishOutcome[] }>(`/api/publish/posts/${postId}`);
       setOutcomes(result.accounts);
       if (result.accounts.length > 0 && result.accounts.every((account) => account.status !== "pending")) {
+        setActivePostId(null);
         setPublish({ status: "complete" });
         return;
       }
       await new Promise((resolve) => setTimeout(resolve, 2000));
     }
-    setPublish({ status: "pending" });
+    setPublish({ status: "ready", error: "Publishing is still processing. Resume status monitoring shortly." });
+  }
+
+  async function submitPost(accountIds: string[], mediaId: string): Promise<void> {
+    const content = [publish.title.trim(), publish.caption.trim()].filter(Boolean).join("\n\n");
+    const post = await api<{ id: string }>("/api/publish/posts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accountIds, content, mediaId }),
+    });
+    setPublish({ status: "pending", error: undefined });
+    await pollPost(post.id);
+  }
+
+  async function retryFailedAccounts() {
+    if (!confirmedMediaId) return;
+    const failedAccountIds = outcomes
+      .filter((outcome) => outcome.status === "failed")
+      .map((outcome) => outcome.id);
+    if (failedAccountIds.length === 0) return;
+    try {
+      setPublish({ status: "publishing", error: undefined });
+      await submitPost(failedAccountIds, confirmedMediaId);
+    } catch (error) {
+      setPublish({ status: "error", error: error instanceof Error ? error.message : "Retry failed." });
+    }
   }
 
   async function publishVideo() {
@@ -113,6 +158,11 @@ export function PublishStep() {
       socialPlatforms.some((platform) => platform.id === account.network && platform.requiresTitle));
     if (needsTitle && !publish.title.trim()) {
       setPublish({ error: "Add a title for the selected video platform." });
+      return;
+    }
+    const content = [publish.title.trim(), publish.caption.trim()].filter(Boolean).join("\n\n");
+    if (content.length > 5000) {
+      setPublish({ error: "The combined title and caption must not exceed 5,000 characters." });
       return;
     }
 
@@ -136,16 +186,10 @@ export function PublishStep() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: media.id, size: output.blob.size }),
       });
+      setConfirmedMediaId(media.id);
 
       setPublish({ status: "publishing", uploadProgress: 1 });
-      const content = [publish.title.trim(), publish.caption.trim()].filter(Boolean).join("\n\n");
-      const post = await api<{ id: string }>("/api/publish/posts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accountIds: selected.map((account) => account.id), content, mediaId: media.id }),
-      });
-      setPublish({ status: "pending" });
-      await pollPost(post.id);
+      await submitPost(selected.map((account) => account.id), media.id);
     } catch (error) {
       setPublish({ status: "error", error: error instanceof Error ? error.message : "Publishing failed." });
     }
@@ -172,7 +216,7 @@ export function PublishStep() {
         <label className="min-w-48 text-sm text-muted">
           Connect or change account
           <select value={connectNetwork} onChange={(event) => setConnectNetwork(event.target.value as SocialNetwork)} className="mt-2 w-full rounded-lg border border-edge bg-background px-3 py-2 text-body">
-            {socialPlatforms.map((platform) => <option key={platform.id} value={platform.id}>{platform.label}</option>)}
+            {socialPlatforms.filter((platform) => platform.publishingEnabled !== false).map((platform) => <option key={platform.id} value={platform.id}>{platform.label}</option>)}
           </select>
         </label>
         <button type="button" onClick={connectAccount} disabled={busy} className="rounded-lg border border-edge px-4 py-2 text-sm font-medium text-body transition hover:border-accent disabled:opacity-50">Connect account</button>
@@ -184,13 +228,13 @@ export function PublishStep() {
         <fieldset disabled={busy} className="grid gap-3 sm:grid-cols-2">
           <legend className="sr-only">Publishing accounts</legend>
           {publish.accounts.map((account) => (
-            <label key={account.id} className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 ${publish.selectedAccountIds.includes(account.id) ? "border-accent bg-raised" : "border-edge bg-background"}`}>
-              <input type="checkbox" checked={publish.selectedAccountIds.includes(account.id)} onChange={() => toggleAccount(account.id)} className="h-4 w-4 accent-[var(--accent)]" />
+            <label key={account.id} className={`flex items-center gap-3 rounded-lg border p-3 ${socialPlatforms.some((platform) => platform.id === account.network && platform.publishingEnabled === false) ? "cursor-not-allowed opacity-60" : "cursor-pointer"} ${publish.selectedAccountIds.includes(account.id) ? "border-accent bg-raised" : "border-edge bg-background"}`}>
+              <input type="checkbox" checked={publish.selectedAccountIds.includes(account.id)} onChange={() => toggleAccount(account.id)} disabled={socialPlatforms.some((platform) => platform.id === account.network && platform.publishingEnabled === false)} className="h-4 w-4 accent-[var(--accent)]" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium text-heading">{account.nickname}</span>
                 <span className="block truncate text-xs text-muted">{account.network} · {account.username}</span>
               </span>
-              <span className={`text-xs ${account.active && account.healthy ? "text-emerald-400" : "text-amber-300"}`}>{account.active && account.healthy ? "Healthy" : "Reconnect"}</span>
+              <span className={`text-xs ${account.active && account.healthy ? "text-emerald-400" : "text-amber-300"}`}>{socialPlatforms.some((platform) => platform.id === account.network && platform.publishingEnabled === false) ? "Not yet supported" : account.active && account.healthy ? "Healthy" : "Reconnect"}</span>
             </label>
           ))}
         </fieldset>
@@ -229,7 +273,11 @@ export function PublishStep() {
       )}
       {publish.error && <p role="alert" className="rounded-lg border border-red-900/60 bg-red-950/40 p-3 text-sm text-red-300">{publish.error}</p>}
 
-      <button type="button" onClick={publishVideo} disabled={busy || publish.selectedAccountIds.length === 0} className="rounded-lg bg-accent px-6 py-3 text-sm font-semibold text-accent-fg transition hover:brightness-110 disabled:opacity-50">Review and publish</button>
+      <div className="flex flex-wrap gap-3">
+        {outcomes.length === 0 && <button type="button" onClick={publishVideo} disabled={busy || publish.selectedAccountIds.length === 0} className="rounded-lg bg-accent px-6 py-3 text-sm font-semibold text-accent-fg transition hover:brightness-110 disabled:opacity-50">Review and publish</button>}
+        {confirmedMediaId && outcomes.some((outcome) => outcome.status === "failed") && <button type="button" onClick={retryFailedAccounts} disabled={busy} className="rounded-lg bg-accent px-6 py-3 text-sm font-semibold text-accent-fg transition hover:brightness-110 disabled:opacity-50">Retry failed accounts</button>}
+        {activePostId && publish.status === "ready" && <button type="button" onClick={() => pollPost(activePostId)} className="rounded-lg border border-edge px-4 py-2 text-sm font-medium text-body transition hover:border-accent">Resume status</button>}
+      </div>
       <p className="text-xs text-muted/70">Nothing is uploaded or posted until you confirm the named accounts. Source media and rendering stay on this device; the finished MP4 is uploaded directly to Outstand for delivery.</p>
     </div>
   );

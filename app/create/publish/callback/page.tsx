@@ -12,6 +12,10 @@ export default function PublishCallbackPage() {
     setMessage(error
       ? `The account was not connected: ${error}`
       : "Account connection returned successfully. Refresh connected accounts in the Publish step.");
+    if (window.opener) {
+      window.opener.postMessage({ type: "outstand-oauth-return", error }, window.location.origin);
+      window.setTimeout(() => window.close(), 1200);
+    }
   }, []);
 
   return (

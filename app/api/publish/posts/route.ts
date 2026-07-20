@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { socialPlatforms } from "@/config/social-platforms";
 import { createPost, listSocialAccounts } from "@/lib/server/outstand";
 import { requirePublishingSession, requireSameOrigin } from "@/lib/server/publishing-auth";
 import { publishingError, validProviderId } from "@/lib/server/publishing-route";
@@ -27,9 +28,11 @@ export async function POST(request: Request): Promise<NextResponse> {
     if (!validProviderId(body?.mediaId)) throw new Error("The confirmed media ID is invalid.");
 
     const accounts = await listSocialAccounts();
-    const activeIds = new Set(accounts
+    const activeAccounts = accounts
       .filter((account) => account.isActive === true || account.isActive === 1)
-      .map((account) => account.id));
+      .filter((account) => socialPlatforms.some((platform) =>
+        platform.id === account.network && platform.publishingEnabled !== false));
+    const activeIds = new Set(activeAccounts.map((account) => account.id));
     if (!accountIds.every((id) => activeIds.has(id))) {
       throw new Error("One or more selected accounts are no longer connected.");
     }

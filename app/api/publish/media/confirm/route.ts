@@ -1,10 +1,18 @@
 import { NextResponse } from "next/server";
-import { socialVideoMaxBytes } from "@/lib/server/blob-staging";
 import { confirmMediaUpload } from "@/lib/server/outstand";
 import { requirePublishingSession, requireSameOrigin } from "@/lib/server/publishing-auth";
 import { publishingError, validProviderId } from "@/lib/server/publishing-route";
 
 export const runtime = "nodejs";
+
+const defaultSocialVideoMaxBytes = 500 * 1024 * 1024;
+
+function socialVideoMaxBytes(): number {
+  const configured = Number(process.env.SOCIAL_VIDEO_MAX_BYTES);
+  return Number.isSafeInteger(configured) && configured > 0
+    ? configured
+    : defaultSocialVideoMaxBytes;
+}
 
 export async function POST(request: Request): Promise<NextResponse> {
   try {
