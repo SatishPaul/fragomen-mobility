@@ -2,18 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { platformsForFormat, socialPlatforms, type SocialNetwork } from "@/config/social-platforms";
+import {
+  allOutcomesTerminal,
+  composePostContent,
+  failedAccountIds,
+  type PublishOutcome,
+} from "@/lib/publishing";
 import { getLatestRenderOutput } from "@/lib/render-output";
 import { useProject } from "@/lib/store";
 import type { SocialAccount } from "@/lib/types";
-
-interface PublishOutcome {
-  id: string;
-  network: SocialNetwork;
-  username: string;
-  status: "pending" | "published" | "failed";
-  error: string | null;
-  platformPostUrl: string | null;
-}
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
@@ -108,7 +105,7 @@ export function PublishStep() {
     for (let attempt = 0; attempt < 90; attempt += 1) {
       const result = await api<{ accounts: PublishOutcome[] }>(`/api/publish/posts/${postId}`);
       setOutcomes(result.accounts);
-      if (result.accounts.length > 0 && result.accounts.every((account) => account.status !== "pending")) {
+      if (allOutcomesTerminal(result.accounts)) {
         setActivePostId(null);
         setPublish({ status: "complete" });
         return;
@@ -119,7 +116,7 @@ export function PublishStep() {
   }
 
   async function submitPost(accountIds: string[], mediaId: string): Promise<void> {
-    const content = [publish.title.trim(), publish.caption.trim()].filter(Boolean).join("\n\n");
+    const content = composePostContent(publish.title, publish.caption);
     const post = await api<{ id: string }>("/api/publish/posts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -131,13 +128,11 @@ export function PublishStep() {
 
   async function retryFailedAccounts() {
     if (!confirmedMediaId) return;
-    const failedAccountIds = outcomes
-      .filter((outcome) => outcome.status === "failed")
-      .map((outcome) => outcome.id);
-    if (failedAccountIds.length === 0) return;
+    const retryAccountIds = failedAccountIds(outcomes);
+    if (retryAccountIds.length === 0) return;
     try {
       setPublish({ status: "publishing", error: undefined });
-      await submitPost(failedAccountIds, confirmedMediaId);
+      await submitPost(retryAccountIds, confirmedMediaId);
     } catch (error) {
       setPublish({ status: "error", error: error instanceof Error ? error.message : "Retry failed." });
     }
@@ -160,7 +155,7 @@ export function PublishStep() {
       setPublish({ error: "Add a title for the selected video platform." });
       return;
     }
-    const content = [publish.title.trim(), publish.caption.trim()].filter(Boolean).join("\n\n");
+    const content = composePostContent(publish.title, publish.caption);
     if (content.length > 5000) {
       setPublish({ error: "The combined title and caption must not exceed 5,000 characters." });
       return;

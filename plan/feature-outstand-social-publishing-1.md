@@ -251,14 +251,14 @@ sequenceDiagram
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-029 | Add unit tests for platform validation, signed gate sessions, account-ID resolution, status normalization, retry targeting, and media validation |  |  |
+| TASK-029 | Add unit tests for platform validation, signed gate sessions, account-ID resolution, status normalization, retry targeting, and media validation | Partial: gate, origin, provider ID, media validation, retry, and polling decisions | 2026-07-20 |
 | TASK-030 | Add route tests proving unauthenticated requests, invalid media IDs, oversized files, unknown account IDs, invalid settings, and duplicate submissions are rejected |  |  |
 | TASK-031 | Add browser tests for account display, popup OAuth return, profile mismatch, explicit confirmation, direct upload, progress, partial failure, retry, and resumable polling |  |  |
-| TASK-032 | Run `npm run build`, the added test suite, and a production deployment smoke test without using real social accounts |  |  |
+| TASK-032 | Run `npm run build`, the added test suite, and a production deployment smoke test without using real social accounts | Partial: 8 tests, build, and zero-vulnerability runtime audit pass; production smoke test pending | 2026-07-20 |
 | TASK-033 | Run one user-approved live post to a designated test account, verify the native platform URL and video playback, and delete the test post if requested |  |  |
 | TASK-034 | Verify Outstand media retention and deletion behavior for successful and abandoned uploads |  |  |
-| TASK-035 | Update `README.md` with setup, account connection, direct-upload behavior, limits, troubleshooting, data retention, and secret-rotation instructions |  |  |
-| TASK-036 | Update this plan with completion dates, validation evidence, final platform coverage, and any accepted deviations |  |  |
+| TASK-035 | Update `README.md` with setup, account connection, direct-upload behavior, limits, troubleshooting, data retention, and secret-rotation instructions | Yes | 2026-07-20 |
+| TASK-036 | Update this plan with completion dates, validation evidence, final platform coverage, and any accepted deviations | Yes | 2026-07-20 |
 | TASK-037 | Add a pre-render capability check for cross-origin isolation, `SharedArrayBuffer`, required browser APIs, and supported-browser conditions; preserve MP4 download when publishing services are unavailable |  |  |
 | TASK-038 | Add privacy-preserving local render measurements for duration, output duration, output size, completion, cancellation, and categorized failure without storing source media or generated content |  |  |
 | TASK-039 | After 100 production attempts, review render failure rate and user-device constraints against GUD-003 and record whether remote-render discovery is warranted |  |  |

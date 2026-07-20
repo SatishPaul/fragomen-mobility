@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getPost } from "@/lib/server/outstand";
 import { requirePublishingSession } from "@/lib/server/publishing-auth";
-import { publishingError, validProviderId } from "@/lib/server/publishing-route";
+import { publishingError } from "@/lib/server/publishing-route";
+import { validProviderId } from "@/lib/server/publishing-validation";
 
 export const runtime = "nodejs";
 

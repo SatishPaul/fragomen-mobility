@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { socialPlatforms } from "@/config/social-platforms";
 import { createPost, listSocialAccounts } from "@/lib/server/outstand";
 import { requirePublishingSession, requireSameOrigin } from "@/lib/server/publishing-auth";
-import { publishingError, validProviderId } from "@/lib/server/publishing-route";
+import { publishingError } from "@/lib/server/publishing-route";
+import { validProviderId } from "@/lib/server/publishing-validation";
 import { clientIp, throttled } from "@/lib/server/throttle";
 
 export const runtime = "nodejs";

@@ -6,7 +6,3 @@ export function publishingError(error: unknown): NextResponse {
   const status = error instanceof OutstandError ? error.status : 400;
   return NextResponse.json({ error: message }, { status });
 }
-
-export function validProviderId(value: unknown): value is string {
-  return typeof value === "string" && /^[a-zA-Z0-9_-]{1,128}$/.test(value);
-}

@@ -1,18 +1,10 @@
 import { NextResponse } from "next/server";
 import { confirmMediaUpload } from "@/lib/server/outstand";
 import { requirePublishingSession, requireSameOrigin } from "@/lib/server/publishing-auth";
-import { publishingError, validProviderId } from "@/lib/server/publishing-route";
+import { publishingError } from "@/lib/server/publishing-route";
+import { validProviderId, validVideoSize } from "@/lib/server/publishing-validation";
 
 export const runtime = "nodejs";
-
-const defaultSocialVideoMaxBytes = 500 * 1024 * 1024;
-
-function socialVideoMaxBytes(): number {
-  const configured = Number(process.env.SOCIAL_VIDEO_MAX_BYTES);
-  return Number.isSafeInteger(configured) && configured > 0
-    ? configured
-    : defaultSocialVideoMaxBytes;
-}
 
 export async function POST(request: Request): Promise<NextResponse> {
   try {
@@ -20,7 +12,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     await requirePublishingSession();
     const body = (await request.json().catch(() => null)) as { id?: string; size?: number } | null;
     if (!validProviderId(body?.id)) throw new Error("The media ID is invalid.");
-    if (!Number.isSafeInteger(body?.size) || body!.size! <= 0 || body!.size! > socialVideoMaxBytes()) {
+    if (!validVideoSize(body?.size)) {
       throw new Error("The video size is invalid.");
     }
     const media = await confirmMediaUpload(body.id, body.size!);
