@@ -1,12 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createGateToken, verifyGateToken } from "./gate";
-import { requireSameOrigin } from "./publishing-auth";
+import { requirePublishingSession, requireSameOrigin } from "./publishing-auth";
 import {
   sanitizeMediaFilename,
   socialVideoMaxBytes,
   validProviderId,
   validVideoSize,
 } from "./publishing-validation";
+
+const cookieStore = vi.hoisted(() => vi.fn());
+
+vi.mock("next/headers", () => ({ cookies: cookieStore }));
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  cookieStore.mockReset();
+});
 
 describe("publishing security", () => {
   it("accepts an unexpired gate token and rejects expiry or tampering", () => {
@@ -25,6 +34,20 @@ describe("publishing security", () => {
     expect(() => requireSameOrigin(new Request("https://app.example/api", {
       headers: { origin: "https://app.example" },
     }))).not.toThrow();
+  });
+
+  it("requires configuration and a valid signed session cookie", async () => {
+    vi.stubEnv("APP_PASSWORD", "secret");
+    cookieStore.mockResolvedValue({
+      get: () => ({ value: createGateToken("secret") }),
+    });
+    await expect(requirePublishingSession()).resolves.toBeUndefined();
+
+    cookieStore.mockResolvedValue({ get: () => ({ value: "invalid" }) });
+    await expect(requirePublishingSession()).rejects.toThrow("Your session has expired.");
+
+    vi.stubEnv("APP_PASSWORD", "");
+    await expect(requirePublishingSession()).rejects.toThrow("requires APP_PASSWORD");
   });
 
   it("validates provider identifiers", () => {

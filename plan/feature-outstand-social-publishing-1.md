@@ -251,10 +251,10 @@ sequenceDiagram
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-029 | Add unit tests for platform validation, signed gate sessions, account-ID resolution, status normalization, retry targeting, and media validation | Partial: gate, origin, provider ID, media validation, retry, and polling decisions | 2026-07-20 |
-| TASK-030 | Add route tests proving unauthenticated requests, invalid media IDs, oversized files, unknown account IDs, invalid settings, and duplicate submissions are rejected |  |  |
+| TASK-029 | Add unit tests for platform validation, signed gate sessions, account-ID resolution, status normalization, retry targeting, and media validation | Partial: gate, session, origin, provider ID, media validation, retry, polling, and account resolution | 2026-07-20 |
+| TASK-030 | Add route tests proving unauthenticated requests, invalid media IDs, oversized files, unknown account IDs, invalid settings, and duplicate submissions are rejected | Partial: exact active-account resolution and duplicate account-ID collapse | 2026-07-20 |
 | TASK-031 | Add browser tests for account display, popup OAuth return, profile mismatch, explicit confirmation, direct upload, progress, partial failure, retry, and resumable polling |  |  |
-| TASK-032 | Run `npm run build`, the added test suite, and a production deployment smoke test without using real social accounts | Partial: 8 tests, build, and zero-vulnerability runtime audit pass; production smoke test pending | 2026-07-20 |
+| TASK-032 | Run `npm run build`, the added test suite, and a production deployment smoke test without using real social accounts | Yes: 13 tests, build, zero-vulnerability runtime audit, production pages, isolation headers, and publishing-disabled boundary pass | 2026-07-20 |
 | TASK-033 | Run one user-approved live post to a designated test account, verify the native platform URL and video playback, and delete the test post if requested |  |  |
 | TASK-034 | Verify Outstand media retention and deletion behavior for successful and abandoned uploads |  |  |
 | TASK-035 | Update `README.md` with setup, account connection, direct-upload behavior, limits, troubleshooting, data retention, and secret-rotation instructions | Yes | 2026-07-20 |
