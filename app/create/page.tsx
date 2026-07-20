@@ -173,7 +173,7 @@ export default function CreatePage() {
             <StepCard
               number={6}
               title="Publish"
-              subtitle="Choose connected social accounts, review platform settings, then confirm before the final MP4 is uploaded and posted."
+              subtitle="Choose connected social accounts, review the post, then confirm before the final MP4 is uploaded to Outstand and published."
               color="#60a5fa"
               status={rendered ? "active" : "locked"}
             >
