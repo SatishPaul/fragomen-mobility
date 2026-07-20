@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="96" viewBox="0 0 360 96">
+  <rect x="4" y="8" width="80" height="80" rx="20" fill="#e08a4c"/>
+  <path d="M36 32 L64 48 L36 64 Z" fill="#160d05"/>
+  <text x="100" y="62" font-family="Georgia, serif" font-size="40" font-weight="600" fill="#f2f5fb">VideoMaker</text>
+</svg>

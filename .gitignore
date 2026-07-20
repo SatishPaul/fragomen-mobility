@@ -1,0 +1,13 @@
+node_modules/
+.next/
+out/
+.env*
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+public/ffmpeg/
+vercel-production-smoke.png
+VideoMaker-delivery.zip
+VideoMaker-delivery-v2.zip
+Deploy-to-Vercel.pdf
+

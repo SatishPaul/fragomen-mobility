@@ -1,0 +1,11 @@
+.env*
+.git/
+.next/
+.vercel/
+node_modules/
+plan/
+VideoMaker-delivery.zip
+VideoMaker-delivery-v2.zip
+Deploy-to-Vercel.pdf
+fragomen-mobility-pilot.code-workspace
+vercel-production-smoke.png
