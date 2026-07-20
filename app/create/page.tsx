@@ -9,9 +9,11 @@ import { FormatStep } from "@/components/FormatStep";
 import { ScriptStep } from "@/components/ScriptStep";
 import { VoiceStep } from "@/components/VoiceStep";
 import { RenderStep } from "@/components/RenderStep";
+import { PublishStep } from "@/components/PublishStep";
 import { Sidebar } from "@/components/Sidebar";
 import { clearDraft, restoreDraft } from "@/lib/draft";
 import { setCustomTrack } from "@/lib/music";
+import { clearLatestRenderOutput } from "@/lib/render-output";
 import { useProject } from "@/lib/store";
 import { clearSceneAudio, totalDuration } from "@/lib/tts";
 
@@ -34,6 +36,7 @@ export default function CreatePage() {
     }
     const s = useProject.getState();
     if (s.render.url) URL.revokeObjectURL(s.render.url);
+    clearLatestRenderOutput();
     clearSceneAudio();
     setCustomTrack(null);
     s.reset();
@@ -68,6 +71,10 @@ export default function CreatePage() {
       label: "Render",
       state: rendered ? "done" : voReady ? "current" : "todo",
     },
+    {
+      label: "Publish",
+      state: rendered ? "current" : "todo",
+    },
   ];
   const nextLabel = steps.find((s) => s.state === "current")?.label;
 
@@ -95,7 +102,7 @@ export default function CreatePage() {
         </div>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
           Upload photos or short clips, pick a look, and the AI drafts grounded per-scene
-          narration, voices it, and renders a ready-to-post MP4 — all in your browser.
+          narration, voices it, and renders a ready-to-post MP4 in your browser.
         </p>
 
         {restored && (
@@ -156,11 +163,21 @@ export default function CreatePage() {
             <StepCard
               number={5}
               title="Render & download"
-              subtitle="Your video is stitched and encoded right here on your device — nothing is uploaded."
+              subtitle="Your video is stitched and encoded on your device. Source media and render intermediates stay local."
               color="#e08a4c"
               status={rendered ? "done" : voReady ? "active" : "locked"}
             >
               <RenderStep />
+            </StepCard>
+
+            <StepCard
+              number={6}
+              title="Publish"
+              subtitle="Choose connected social accounts, review platform settings, then confirm before the final MP4 is uploaded and posted."
+              color="#60a5fa"
+              status={rendered ? "active" : "locked"}
+            >
+              <PublishStep />
             </StepCard>
           </div>
 

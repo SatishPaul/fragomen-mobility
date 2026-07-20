@@ -4,6 +4,7 @@ import { useState } from "react";
 import { formats, limits } from "@/config/templates";
 import { isMobile } from "@/lib/media";
 import { renderVideo } from "@/lib/render";
+import { setLatestRenderOutput } from "@/lib/render-output";
 import { useProject } from "@/lib/store";
 
 export function RenderStep() {
@@ -26,6 +27,7 @@ export function RenderStep() {
         cards: s.cards,
         onProgress: (progress, label) => setRender({ progress, label }),
       });
+      setLatestRenderOutput(out);
       setRender({
         status: "done",
         progress: 1,

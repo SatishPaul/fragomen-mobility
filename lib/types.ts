@@ -1,4 +1,5 @@
 import type { FormatId, StyleId } from "@/config/templates";
+import type { SocialNetwork } from "@/config/social-platforms";
 
 export type AssetKind = "image" | "video";
 
@@ -29,7 +30,7 @@ export interface Scene {
   generating?: boolean;
 }
 
-export type WizardStep = "upload" | "format" | "script" | "voice" | "render";
+export type WizardStep = "upload" | "format" | "script" | "voice" | "render" | "publish";
 
 export interface RenderState {
   status: "idle" | "rendering" | "done" | "error";
@@ -40,6 +41,26 @@ export interface RenderState {
   /** Object URL of the finished MP4. */
   url?: string;
   fileName?: string;
+  error?: string;
+}
+
+export interface SocialAccount {
+  id: string;
+  network: SocialNetwork;
+  nickname: string;
+  username: string;
+  profilePictureUrl?: string;
+  active: boolean;
+  healthy?: boolean;
+}
+
+export interface PublishState {
+  status: "idle" | "loading-accounts" | "ready" | "uploading" | "publishing" | "pending" | "complete" | "error";
+  accounts: SocialAccount[];
+  selectedAccountIds: string[];
+  caption: string;
+  title: string;
+  uploadProgress: number;
   error?: string;
 }
 
@@ -79,4 +100,5 @@ export interface ProjectState {
   voice: string;
   music: MusicSettings;
   render: RenderState;
+  publish: PublishState;
 }

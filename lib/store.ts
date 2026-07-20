@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import type { Asset, MusicSettings, ProjectState, RenderState, Scene, TitleCards } from "./types";
+import type { Asset, MusicSettings, ProjectState, PublishState, RenderState, Scene, TitleCards } from "./types";
 import type { FormatId, StyleId } from "@/config/templates";
 import { tts } from "@/config/models";
 import { scheduleDraftSave } from "./draft";
@@ -21,6 +21,7 @@ interface Actions {
   setVoice: (v: string) => void;
   setMusic: (patch: Partial<MusicSettings>) => void;
   setRender: (patch: Partial<RenderState>) => void;
+  setPublish: (patch: Partial<PublishState>) => void;
   hydrate: (state: Partial<ProjectState>) => void;
   reset: () => void;
 }
@@ -36,6 +37,14 @@ const initial: ProjectState = {
   voice: tts.voices[0].id,
   music: { mode: "ambient", volume: 0.14, mood: "ambient" },
   render: { status: "idle", progress: 0, label: "" },
+  publish: {
+    status: "idle",
+    accounts: [],
+    selectedAccountIds: [],
+    caption: "",
+    title: "",
+    uploadProgress: 0,
+  },
 };
 
 export const useProject = create<ProjectState & Actions>((set) => {
@@ -96,10 +105,17 @@ export const useProject = create<ProjectState & Actions>((set) => {
     setRender: (patch) =>
       set((s) => ({ render: { ...s.render, ...patch } })),
 
+    setPublish: (patch) =>
+      set((s) => ({ publish: { ...s.publish, ...patch } })),
+
     hydrate: (state) => set(() => ({ ...state })),
 
     reset: () => {
-      set(() => ({ ...initial, render: { ...initial.render } }));
+      set(() => ({
+        ...initial,
+        render: { ...initial.render },
+        publish: { ...initial.publish, accounts: [], selectedAccountIds: [] },
+      }));
       scheduleDraftSave();
     },
   };

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { expectedToken } from "@/lib/server/gate";
+import { createGateToken, gateSessionMaxAge } from "@/lib/server/gate";
 
 export const runtime = "nodejs";
 
@@ -12,10 +12,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Wrong password" }, { status: 401 });
   }
   const res = NextResponse.json({ ok: true });
-  res.cookies.set("vm_auth", expectedToken(password), {
+  res.cookies.set("vm_auth", createGateToken(password), {
     httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: gateSessionMaxAge,
     path: "/",
   });
   return res;
