@@ -1,7 +1,7 @@
 ---
 title: Add AI Quota Estimates Before Generation
 description: Show estimated narration, voiceover, and video-generation quota usage before each action
-status: in-progress
+status: completed
 last_updated: 2026-07-21
 ---
 
@@ -16,7 +16,7 @@ Show users how much monthly AI quota each generation step is expected to require
 * [x] Show estimates before narration, voiceover, and video rendering
 * [x] Run focused tests, the full suite, and the production build
 * [x] Update and regenerate the production walkthrough
-* [ ] Deploy and validate production
+* [x] Deploy and validate production
 
 ## Decisions
 
@@ -45,9 +45,12 @@ Updated the walkthrough to version 1.4 and regenerated the PDF.
 * VS Code reports no errors in the changed TypeScript, TSX, Markdown, or walkthrough HTML files.
 * PyMuPDF confirms the version 1.4 walkthrough has exactly 7 pages and contains all required quota-estimate and zero-token guidance.
 * Raster inspection of pages 1, 4, and 7 confirms the changed content is legible and unclipped.
+* Commit `0c3d224` was pushed to `main`.
+* Vercel deployment `dpl_3rd7bk7KFY5BVHgYi2wi3jNYrTiF` is Ready and aliased to `https://fragomen-mobility.vercel.app`.
+* The production login route returns `200`, and the signed-out `/api/usage/summary` request is protected with `401`.
 
 ## Resume Context
 
-Current checkpoint: Quota estimates, tests, build, and synchronized walkthrough are complete; production deployment remains.
+Current checkpoint: Quota estimates and the synchronized version 1.4 walkthrough are deployed and validated in production.
 
-Next action: Review the final diff, commit and push it, deploy to Vercel production, and validate the canonical routes.
+Next action: Sign in and open Create to confirm the narration estimate reflects the uploaded assets and current account quota.
