@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAppUrl } from "@/lib/server/app-url";
 import { AuthorizationError, requireAdminApi } from "@/lib/server/auth";
 import { listSocialAccounts } from "@/lib/server/outstand";
 
@@ -53,10 +54,10 @@ export async function POST(request: NextRequest) {
     const { user: actor } = await requireAdminApi();
     const input = inviteSchema.parse(await request.json());
     const admin = createAdminClient();
-    const origin = request.nextUrl.origin;
+    const origin = getAppUrl(request.nextUrl.origin);
     const { data, error } = await admin.auth.admin.inviteUserByEmail(input.email, {
       data: { display_name: input.displayName || null },
-      redirectTo: `${origin}/auth/callback?next=/reset-password`,
+      redirectTo: `${origin}/auth/complete?next=/reset-password`,
     });
     if (error) throw error;
 

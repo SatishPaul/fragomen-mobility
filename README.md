@@ -29,6 +29,7 @@ Primary supported target: **desktop Chrome**. Mobile browsers work best-effort w
    | `TTS_PROVIDER` | optional | `auto` (default) / `local` / `groq` / `openrouter` / `off` — see §4 |
   | `NEXT_PUBLIC_SUPABASE_URL` | required for multi-user mode | Supabase project URL |
   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | required for multi-user mode | Supabase anonymous public key |
+  | `NEXT_PUBLIC_APP_URL` | required for production auth | Canonical HTTPS origin, such as `https://fragomen-mobility.vercel.app` |
   | `SUPABASE_SERVICE_ROLE_KEY` | required for administration | Server-only Supabase service-role key |
   | `INITIAL_ADMIN_EMAIL` | required for administration | Email promoted on its first authenticated request |
   | `OUTSTAND_API_KEY` | optional | Server-only Outstand key |
@@ -40,8 +41,11 @@ Primary supported target: **desktop Chrome**. Mobile browsers work best-effort w
 
 4. In Supabase SQL Editor, apply
   `supabase/migrations/202607200001_multi_user_platform.sql`.
-5. In Supabase Auth URL Configuration, set the Site URL to the production URL
-  and allow `/auth/callback` for local, Preview, and Production URLs.
+5. In Supabase Auth URL Configuration, set **Site URL** to the production
+  origin. Add the exact production redirects `/auth/callback` and
+  `/auth/complete`, plus their local and Preview equivalents. Invitation and
+  recovery emails must use `{{ .RedirectTo }}` rather than `{{ .SiteURL }}`
+  when the template builds its own confirmation link.
 6. Deploy, then sign in with `INITIAL_ADMIN_EMAIL`. The first authenticated
   request promotes that profile to administrator.
 

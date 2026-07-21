@@ -69,7 +69,13 @@ export function AuthPanel({ mode }: { mode: AuthMode }) {
     }
   }
 
-  const disabledMessage = searchParams.get("error") === "disabled";
+  const authError = searchParams.get("error");
+  const disabledMessage = authError === "disabled";
+  const callbackMessage = authError === "expired_link"
+    ? "This invitation or reset link is invalid or has expired. Request a new email and use only the latest link."
+    : authError === "callback"
+      ? "We could not complete that sign-in link. Request a new invitation or password reset email."
+      : null;
 
   return (
     <form onSubmit={submit} className="w-full max-w-md border border-edge bg-surface p-8 shadow-2xl shadow-black/20">
@@ -80,6 +86,12 @@ export function AuthPanel({ mode }: { mode: AuthMode }) {
       {disabledMessage && (
         <p className="mt-5 border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-300">
           This account is disabled. Contact an administrator.
+        </p>
+      )}
+
+      {callbackMessage && (
+        <p role="alert" className="mt-5 border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-300">
+          {callbackMessage}
         </p>
       )}
 
