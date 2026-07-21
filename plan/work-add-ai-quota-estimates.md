@@ -1,7 +1,7 @@
 ---
 title: Add AI Quota Estimates Before Generation
 description: Show estimated narration, voiceover, and video-generation quota usage before each action
-status: in-progress
+status: completed
 last_updated: 2026-07-21
 ---
 
@@ -41,6 +41,8 @@ Reopened the task after user testing showed the original wording could be read a
 
 Updated the walkthrough to version 1.5 with matching per-run and monthly-quota terminology.
 
+Committed the clarification as `d10e15e`, pushed it to `main`, and deployed it to Vercel production. The canonical production alias now serves the clearer per-run cost, monthly quota balance, and estimated shortfall wording.
+
 ## Validation
 
 * Source inspection confirms current accounting behavior for analysis, scripts, voiceover, and rendering.
@@ -58,9 +60,12 @@ Updated the walkthrough to version 1.5 with matching per-run and monthly-quota t
 * Production Next.js build after the wording change completed successfully with only the pre-existing warnings.
 * PyMuPDF confirms the version 1.5 walkthrough has exactly 7 pages and contains the required per-run, monthly-quota, and shortfall terminology.
 * Raster inspection of page 4 confirms the clarified walkthrough content is legible and unclipped.
+* Commit `d10e15e` was pushed to `main`.
+* Vercel deployment `dpl_7fAMrhxzW5FUpYyKZWeN9GB3vY5t` is Ready and aliased to `https://fragomen-mobility.vercel.app`.
+* The production login route returns `200`, and the signed-out `/api/usage/summary` request remains protected with `401`.
 
 ## Resume Context
 
-Current checkpoint: The clearer per-run versus monthly-quota wording, tests, build, and version 1.5 walkthrough are complete; deployment remains.
+Current checkpoint: Completed. The clarified quota wording and version 1.5 walkthrough are deployed and validated in production.
 
-Next action: Commit and push the clarification, deploy it to Vercel production, and validate the canonical routes.
+Next action: None. Reopen this work state only if production feedback identifies another quota-estimate issue.
