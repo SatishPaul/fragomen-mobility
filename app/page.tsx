@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AuthFragmentBridge } from "@/components/AuthFragmentBridge";
 import { Header } from "@/components/Header";
 import { brand } from "@/config/brand";
 
@@ -35,6 +36,7 @@ const steps = [
 export default function LandingPage() {
   return (
     <>
+      <AuthFragmentBridge />
       <Header />
       <main className="mx-auto max-w-6xl px-4 sm:px-6">
         <section className="py-20 text-center sm:py-28">

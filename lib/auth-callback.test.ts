@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFragmentSession, safeAuthDestination } from "./auth-callback";
+import { isSupabaseAuthFragment, readFragmentSession, safeAuthDestination } from "./auth-callback";
 
 describe("safeAuthDestination", () => {
   it("accepts an application-relative path", () => {
@@ -28,4 +28,19 @@ describe("readFragmentSession", () => {
   ])("rejects an invalid or failed fragment: %s", (fragment) => {
     expect(readFragmentSession(fragment)).toBeNull();
   });
+});
+
+describe("isSupabaseAuthFragment", () => {
+  it.each([
+    "#access_token=access&refresh_token=refresh&type=invite",
+    "#access_token=access&refresh_token=refresh&type=recovery",
+    "#error=access_denied&error_code=otp_expired",
+  ])("recognizes a Supabase account link: %s", (fragment) => {
+    expect(isSupabaseAuthFragment(fragment)).toBe(true);
+  });
+
+  it.each(["", "#section=how", "#access_token=unrelated&type=signup"])(
+    "ignores an unrelated fragment: %s",
+    (fragment) => expect(isSupabaseAuthFragment(fragment)).toBe(false),
+  );
 });
