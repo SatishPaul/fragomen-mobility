@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { QuotaEstimate } from "@/components/QuotaEstimate";
 import { tts, type VoiceOption } from "@/config/models";
 import { limits } from "@/config/templates";
 import { musicMoods } from "@/lib/music";
 import { useProject } from "@/lib/store";
+import { estimateVoiceover } from "@/lib/usage-estimates";
 import {
   clearServerTtsFallbackReason,
   generateAllVoiceovers,
@@ -42,6 +44,7 @@ export function VoiceStep() {
 
   const ready = scenes.length > 0 && scenes.every((s) => !s.line.trim() || s.audioDuration !== undefined);
   const overLimit = projected > limits.maxOutputSeconds;
+  const voiceoverEstimate = estimateVoiceover(scenes);
 
   useEffect(() => {
     setProjected(totalDuration());
@@ -174,6 +177,13 @@ export function VoiceStep() {
           );
         })}
       </div>
+
+      <QuotaEstimate
+        title="Estimated voiceover quota"
+        tokens={voiceoverEstimate.quotaTokens}
+        detail="Voice generation is tracked by characters and audio duration, not deducted from the monthly AI token quota."
+        breakdown={`${voiceoverEstimate.characters.toLocaleString()} characters · about ${voiceoverEstimate.seconds.toLocaleString()} seconds of speech.`}
+      />
 
       <div className="flex flex-wrap items-center gap-3">
         <button

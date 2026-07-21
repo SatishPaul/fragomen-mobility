@@ -1,13 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { QuotaEstimate } from "@/components/QuotaEstimate";
 import { analyzeAssets, generateScript } from "@/lib/analyze";
 import { useProject } from "@/lib/store";
+import { estimateNarrationTokens } from "@/lib/usage-estimates";
 
 export function ScriptStep() {
   const { assets, scenes, context, cards, scriptStatus, setContext, setCards, patchScene } =
     useProject();
   const [running, setRunning] = useState(false);
+  const [quotaRefresh, setQuotaRefresh] = useState(0);
   const [failure, setFailure] = useState<{
     analysisFailed: number;
     analysisError?: string;
@@ -16,6 +19,7 @@ export function ScriptStep() {
 
   const analyzing = assets.some((a) => a.analysis === "analyzing");
   const assetById = new Map(assets.map((a) => [a.id, a]));
+  const narrationEstimate = estimateNarrationTokens(assets, context);
 
   async function run() {
     setRunning(true);
@@ -32,6 +36,7 @@ export function ScriptStep() {
       }
     } finally {
       setRunning(false);
+      setQuotaRefresh((current) => current + 1);
     }
   }
 
@@ -51,6 +56,15 @@ export function ScriptStep() {
           className="w-full resize-y rounded-lg border border-edge bg-raised px-3 py-2.5 text-sm text-heading placeholder:text-muted/60 focus:border-accent focus:outline-none"
         />
       </div>
+
+      <QuotaEstimate
+        title="Estimated narration quota"
+        tokens={narrationEstimate.totalTokens}
+        approximate
+        refreshKey={quotaRefresh}
+        detail="Conservative preflight estimate; actual model tokenization and caption length vary."
+        breakdown={`${narrationEstimate.analysisTokens.toLocaleString()} for visual analysis + ${narrationEstimate.scriptTokens.toLocaleString()} for script writing.`}
+      />
 
       <div className="flex flex-wrap items-center gap-3">
         <button

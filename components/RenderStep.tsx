@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Download } from "lucide-react";
+import { QuotaEstimate } from "@/components/QuotaEstimate";
 import { formats, limits } from "@/config/templates";
 import { isMobile } from "@/lib/media";
 import { renderVideo } from "@/lib/render";
@@ -9,6 +10,7 @@ import { setLatestRenderOutput, setLatestSavedVideoId } from "@/lib/render-outpu
 import { useProject } from "@/lib/store";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/client";
+import { VIDEO_RENDER_QUOTA_TOKENS } from "@/lib/usage-estimates";
 
 export function RenderStep() {
   const project = useProject();
@@ -101,6 +103,13 @@ export function RenderStep() {
           1080p and faster renders, use desktop Chrome.
         </p>
       )}
+
+      <QuotaEstimate
+        title="Estimated video-generation quota"
+        tokens={VIDEO_RENDER_QUOTA_TOKENS}
+        detail="Video rendering uses FFmpeg in this browser and does not deduct from the monthly AI token quota. Zero tokens means no quota charge, not instant processing."
+        breakdown="Keep this tab open while your device renders. Wait time depends on media length, resolution, device speed, and selected format."
+      />
 
       {render.status !== "done" && (
         <button
