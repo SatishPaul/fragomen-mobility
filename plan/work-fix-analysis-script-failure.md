@@ -1,7 +1,7 @@
 ---
 title: Fix Media Analysis and Script Generation Failure
 description: Diagnose and repair the two-image analysis and narration failure shown in production
-status: in-progress
+status: completed
 last_updated: 2026-07-21
 ---
 
@@ -16,7 +16,7 @@ Make two-image analysis and script generation reliable, and show an actionable e
 * [x] Implement the smallest reliable fix with focused tests
 * [x] Run focused tests and the production build
 * [x] Update and regenerate the production walkthrough
-* [ ] Deploy and validate the production workflow
+* [x] Deploy and validate the production workflow
 
 ## Decisions
 
@@ -45,9 +45,12 @@ Updated the production walkthrough to version 1.3 and regenerated its PDF.
 * VS Code reports no errors in the changed TypeScript, TSX, test, or walkthrough HTML files.
 * PyMuPDF confirms the version 1.3 walkthrough has exactly 7 pages and contains the required retry, visual-analysis, and quota guidance.
 * Raster inspection of pages 1, 4, and 7 confirms the changed content is legible and unclipped.
+* Commit `0844c59` was pushed to `main`.
+* Vercel deployment `dpl_HpaKGpWAo9DBQacdmneSkZUFnMd7` is Ready and aliased to `https://fragomen-mobility.vercel.app`.
+* The production login route returns `200`, and an unauthenticated `/api/analyze` request remains protected with `401`.
 
 ## Resume Context
 
-Current checkpoint: The reliability fix, tests, build, and synchronized walkthrough are complete; production deployment remains.
+Current checkpoint: The AI reliability fix and synchronized walkthrough are deployed and validated in production.
 
-Next action: Review the final diff, commit and push it, deploy to Vercel production, and confirm the deployment is ready.
+Next action: Sign in, keep the two uploaded images, and select Re-analyze & rewrite script to validate the authenticated provider response with the user's current quota.
