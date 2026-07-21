@@ -16,3 +16,16 @@ For every substantial task that requires planning, multiple edits, deployment, e
 * Never write passwords, access tokens, refresh tokens, API keys, service-role keys, signed URLs, or sensitive payloads into a planning file.
 
 Do not create a work-state file for casual conversation, a direct informational answer, or a trivial one-step operation with no planned follow-up unless the user explicitly requests one.
+
+## Walkthrough Synchronization
+
+When work changes user-visible features, workflows, permissions, limits, recovery steps, production URLs, or administrator controls:
+
+* Update `docs/VideoMaker-Demo-Walkthrough.html` in the same task.
+* Increment the walkthrough version when instructions or expected behavior change.
+* Regenerate `docs/VideoMaker-Demo-Walkthrough.pdf` from the HTML source.
+* Validate the PDF page count, required updated text, and visual layout of every changed page.
+* Commit and push the HTML source and PDF with the related work or in an immediate documentation follow-up before marking the work-state file completed.
+* Record walkthrough generation and validation results in the task's `Validation` section.
+
+Documentation-only internal changes that do not alter how users operate or understand the application do not require walkthrough regeneration.

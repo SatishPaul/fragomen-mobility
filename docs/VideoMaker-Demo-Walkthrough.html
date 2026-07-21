@@ -147,7 +147,7 @@
       Complete the core walkthrough through Render and Download. Only run the optional publishing section when a real social account has been intentionally assigned and the named destination is approved.
     </div>
 
-    <div class="cover-meta">Version 1.1 | 21 July 2026 | Desktop Chrome recommended</div>
+    <div class="cover-meta">Version 1.2 | 21 July 2026 | Desktop Chrome recommended</div>
   </section>
 
   <section class="page">
@@ -193,13 +193,14 @@
     <p>Run this section while signed in as <strong>forweekend@gmail.com</strong>. The shield icon in the header opens Administration.</p>
 
     <div class="step"><div class="step-number">1</div><div><h4>Open Administration</h4><p>Select the shield icon or open <code>/admin</code>.</p><div class="expected">Expected: "Users and access" appears with Invite a user and Users sections.</div></div></div>
-    <div class="step"><div class="step-number">2</div><div><h4>Invite a test user</h4><p>Enter a test email, display name, and monthly token quota. Select <strong>Invite</strong>, then have the user open only the newest email on the production domain.</p><div class="expected">Expected: "Invitation sent" appears and the user is listed.</div></div></div>
-    <div class="step"><div class="step-number">3</div><div><h4>Adjust access</h4><p>Change the user's quota or Active checkbox, then select the Save button.</p><div class="expected">Expected: the status confirms the user was updated.</div></div></div>
-    <div class="step"><div class="step-number">4</div><div><h4>Assign social accounts only when needed</h4><p>If Outstand accounts are connected, select only the accounts this user may publish to, then save.</p></div></div>
+    <div class="step"><div class="step-number">2</div><div><h4>Invite with the correct role</h4><p>Enter the email and display name, then choose <strong>Regular user</strong> or <strong>Administrator</strong>. Keep administrator access limited to trusted operators.</p><div class="expected">Expected: "Invitation sent" appears. If the Auth identity already exists without a profile, the app recovers it and sends a password-setup email.</div></div></div>
+    <div class="step"><div class="step-number">3</div><div><h4>Set the monthly AI token limit</h4><p>The 100,000 default is the monthly ceiling for remote AI input and output tokens. Choose a lower limit when appropriate; set 0 to block remote AI use.</p></div></div>
+    <div class="step"><div class="step-number">4</div><div><h4>Adjust access and publishing permission</h4><p>Change role, quota, or Active status and select <strong>Save</strong>. For regular users, selected social accounts are destinations they may publish to only after explicit confirmation; assignment never posts automatically.</p></div></div>
+    <div class="step"><div class="step-number">5</div><div><h4>Delete a mistyped or obsolete user</h4><p>Select <strong>Delete</strong> and review the permanent-removal warning. This removes the account, private videos, usage, and publishing records. You cannot delete, disable, or demote yourself, and one active administrator must remain.</p></div></div>
 
     <div class="callout warning">
       <strong>Publishing authorization is deny-by-default</strong>
-      A user can only publish to an account explicitly assigned by an administrator. Leave all accounts unassigned for a render-only demo.
+      Assignment grants permission to use a destination; it never creates a post by itself. Leave all accounts unassigned for a render-only demo.
     </div>
 
     <h3>Recommended user-access checks</h3>
@@ -209,14 +210,16 @@
       <tr><td>Open <code>/admin</code> as a regular user</td><td>Access denied or redirected by the server-side admin check</td></tr>
       <tr><td>Disable a regular user</td><td>That user's next protected request ends the session and reports the account is disabled</td></tr>
       <tr><td>Set a low quota</td><td>Dashboard shows the reduced monthly quota and remaining balance</td></tr>
+      <tr><td>Delete a disposable test user</td><td>A confirmation appears, then the user and owned records are removed</td></tr>
     </table>
 
     <h3>Admin safety notes</h3>
     <ul>
-      <li>The initial administrator cannot be disabled from the UI.</li>
+      <li>Your signed-in administrator cannot be deleted, disabled, or demoted.</li>
+      <li>The system prevents removal of the last active administrator.</li>
       <li>Never share the Supabase service-role key or Vercel environment values.</li>
       <li>Use separate invited accounts for each tester; do not share passwords.</li>
-      <li>Deactivate a test account when its evaluation is complete.</li>
+      <li>Deactivate an account to preserve its history; delete only when permanent removal is intended.</li>
     </ul>
     <div class="footer-label">VideoMaker production walkthrough</div><div class="page-number">3</div>
   </section>
@@ -319,7 +322,7 @@
     <div class="section-head"><div><div class="kicker">Sign-off</div><h2>Acceptance checklist</h2></div><div class="section-no">06</div></div>
 
     <div class="grid-2">
-      <div class="card avoid-break"><div class="eyebrow">Access</div><ul class="checklist"><li>Newest invitation or reset link works.</li><li>Login reaches Dashboard.</li><li>Protected pages redirect when signed out.</li><li>Admin can invite and update users.</li><li>Regular users cannot open Admin.</li></ul></div>
+      <div class="card avoid-break"><div class="eyebrow">Access</div><ul class="checklist"><li>Newest invitation or reset link works.</li><li>Login reaches Dashboard.</li><li>Admin can choose roles and quotas.</li><li>Delete requires confirmation.</li><li>Regular users cannot open Admin.</li></ul></div>
       <div class="card avoid-break"><div class="eyebrow">Creation</div><ul class="checklist"><li>Media uploads and reorders.</li><li>Format and style apply.</li><li>AI script is generated and editable.</li><li>Voiceover completes.</li><li>MP4 renders and downloads.</li></ul></div>
       <div class="card avoid-break"><div class="eyebrow">Data</div><ul class="checklist"><li>Completed video appears in history.</li><li>Dashboard download works.</li><li>Usage and quota update.</li><li>Profile name saves.</li><li>Logout ends the session.</li></ul></div>
       <div class="card avoid-break"><div class="eyebrow">Optional publishing</div><ul class="checklist"><li>Only assigned accounts appear.</li><li>Final confirmation names destinations.</li><li>Status resumes without duplication.</li><li>Native post links work.</li><li>Analytics refresh is manual.</li></ul></div>
@@ -331,6 +334,7 @@
       <tr><td>The browser shows <code>/gate</code></td><td>Open <code>https://fragomen-mobility.vercel.app/login</code> directly.</td></tr>
       <tr><td>Invitation or reset link fails</td><td>Discard older emails, request one new link, and confirm it opens <code>fragomen-mobility.vercel.app</code>, never localhost.</td></tr>
       <tr><td>Login reports an expired link</td><td>Open Forgot password, send one new email, and use only that newest message.</td></tr>
+      <tr><td>Email is already registered</td><td>Refresh Users. Update or delete an existing listed user; missing profiles are recovered when invited again.</td></tr>
       <tr><td>AI request is rate limited</td><td>Wait one minute and retry; free model capacity can fluctuate.</td></tr>
       <tr><td>Voice model is slow on first use</td><td>Keep the tab open while the one-time browser model download completes.</td></tr>
       <tr><td>Render is slow</td><td>Use desktop Chrome, fewer assets, and a shorter 720p output.</td></tr>

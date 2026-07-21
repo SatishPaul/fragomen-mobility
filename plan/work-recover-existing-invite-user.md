@@ -19,6 +19,8 @@ Make administrator user management complete and understandable, including typo r
 * [x] Clarify quota units and social-account authorization in the UI
 * [x] Add focused tests and run the production build
 * [x] Deploy and validate the production workflow
+* [x] Update and regenerate the production walkthrough
+* [x] Add a permanent walkthrough synchronization instruction
 
 ## Decisions
 
@@ -38,6 +40,10 @@ Implemented role-aware invites and updates, self and last-admin protection, expl
 
 Changed `app/api/admin/users/route.ts`, `components/AdminUsers.tsx`, `lib/admin-users.ts`, and `lib/admin-users.test.ts`. Deletion also removes private video objects before deleting the Auth identity and cascading owned database records.
 
+The user requested that every new user-facing feature or workflow change also update the walkthrough source and PDF. Documentation synchronization is now part of this task.
+
+Added a permanent walkthrough synchronization rule to `.github/copilot-instructions.md`. Updated the walkthrough to version 1.2 with role selection, monthly token-limit guidance, existing-account recovery, guarded deletion, and explicit social publishing permission language. Regenerated the seven-page PDF from the HTML source.
+
 ## Validation
 
 * Focused administrator mutation policy: 6 tests passed.
@@ -47,9 +53,13 @@ Changed `app/api/admin/users/route.ts`, `components/AdminUsers.tsx`, `lib/admin-
 * `git diff --check` reports no whitespace errors.
 * Commit `a89bf0d` is deployed and aliased to `https://fragomen-mobility.vercel.app`.
 * An unauthenticated production check confirms `/admin` remains protected and redirects to `/login?next=%2Fadmin`.
+* Headless Edge regenerated `docs/VideoMaker-Demo-Walkthrough.pdf` from the version 1.2 HTML source.
+* PyMuPDF confirms the PDF has exactly 7 pages and contains all required version 1.2 administrator guidance.
+* Raster inspection of pages 1, 3, and 7 confirms the changed content is legible and unclipped.
+* VS Code reports no errors in the permanent instruction or walkthrough HTML.
 
 ## Resume Context
 
-Current checkpoint: The administrator-management improvements are deployed and validated.
+Current checkpoint: The administrator-management improvements are deployed and the synchronized version 1.2 walkthrough is complete.
 
-Next action: Refresh the authenticated Admin page. Use Delete on JC and confirm the warning only when permanent removal is intended.
+Next action: No further action is required for this task. Start a new `plan/work-<task-slug>.md` file for the next substantial change.
