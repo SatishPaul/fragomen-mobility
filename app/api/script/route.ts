@@ -45,12 +45,15 @@ const Lines = z.object({
 export async function POST(req: Request) {
   if (!process.env.OPENROUTER_API_KEY && !process.env.GROQ_API_KEY) {
     return NextResponse.json(
-      { error: "Neither OPENROUTER_API_KEY nor GROQ_API_KEY is configured" },
+      { error: "AI script generation is not configured.", code: "provider_unavailable" },
       { status: 500 },
     );
   }
   if (throttled(clientIp(req), 10)) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    return NextResponse.json(
+      { error: "Too many requests", code: "rate_limited" },
+      { status: 429 },
+    );
   }
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
@@ -119,7 +122,7 @@ export async function POST(req: Request) {
     null;
   const requestId = crypto.randomUUID();
 
-  for (const a of attempts) {
+  for (const [attemptIndex, a] of attempts.entries()) {
     const provider = providerName(a.baseUrl);
     let reservation: Awaited<ReturnType<typeof reserveUsage>> = null;
     try {
@@ -128,7 +131,7 @@ export async function POST(req: Request) {
         provider,
         a.model,
         3500 + Math.ceil(prompt.length / 4),
-        requestId,
+        `${requestId}:${attemptIndex}`,
       );
       const res = await fetch(`${a.baseUrl}/chat/completions`, {
         method: "POST",
@@ -206,7 +209,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ lines, ...cards });
     } catch (e) {
       if (e instanceof QuotaError) {
-        return NextResponse.json({ error: e.message }, { status: 429 });
+        const status = e.code === "authentication_required" ? 401 : e.code === "quota_exceeded" ? 429 : 503;
+        return NextResponse.json({ error: e.message, code: e.code }, { status });
       }
       await finalizeUsage(reservation, "failed", { errorCode: "request_error" });
       console.error(`[script] ${a.model}: ${e instanceof Error ? e.message : e}`);
@@ -218,5 +222,8 @@ export async function POST(req: Request) {
     console.error(`[script] serving partial result (${best.covered}/${scenes.length} scenes)`);
     return NextResponse.json({ lines: best.lines, ...best.cards });
   }
-  return NextResponse.json({ error: "Script generation failed" }, { status: 502 });
+  return NextResponse.json(
+    { error: "Script generation failed", code: "provider_unavailable" },
+    { status: 502 },
+  );
 }

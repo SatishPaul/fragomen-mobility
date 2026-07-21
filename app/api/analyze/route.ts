@@ -22,12 +22,15 @@ const Body = z.object({
 export async function POST(req: Request) {
   if (!process.env.OPENROUTER_API_KEY && !process.env.GROQ_API_KEY) {
     return NextResponse.json(
-      { error: "Neither OPENROUTER_API_KEY nor GROQ_API_KEY is configured" },
+      { error: "AI image analysis is not configured.", code: "provider_unavailable" },
       { status: 500 },
     );
   }
   if (throttled(clientIp(req), 30)) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    return NextResponse.json(
+      { error: "Too many requests", code: "rate_limited" },
+      { status: 429 },
+    );
   }
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
@@ -113,14 +116,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ caption });
     } catch (error) {
       if (error instanceof QuotaError) {
-        return NextResponse.json({ error: error.message }, { status: 429 });
+        const status = error.code === "authentication_required" ? 401 : error.code === "quota_exceeded" ? 429 : 503;
+        return NextResponse.json({ error: error.message, code: error.code }, { status });
       }
       await finalizeUsage(reservation, "failed", { errorCode: "request_error" });
       lastStatus = 502;
     }
   }
   return NextResponse.json(
-    { error: lastStatus === 429 ? "All vision models rate-limited" : "Vision request failed" },
+    {
+      error: lastStatus === 429 ? "All vision models rate-limited" : "Vision request failed",
+      code: lastStatus === 429 ? "rate_limited" : "provider_unavailable",
+    },
     { status: lastStatus },
   );
 }

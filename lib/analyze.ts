@@ -15,6 +15,50 @@ import type { Asset } from "./types";
 const SPACING_MS = 1500;
 const PLACEHOLDER = "(describe this scene)";
 
+type AiFailureCode =
+  | "authentication_required"
+  | "quota_exceeded"
+  | "rate_limited"
+  | "provider_unavailable"
+  | "request_failed";
+
+class AiRequestError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: AiFailureCode,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+export function aiFailureMessage(status: number, code?: string): string {
+  if (status === 401 || code === "authentication_required") {
+    return "Your session expired. Sign in again, then retry.";
+  }
+  if (code === "quota_exceeded") {
+    return "Your monthly AI token limit has been reached. Ask an administrator to raise it or wait until next month.";
+  }
+  if (status === 429 || code === "rate_limited") {
+    return "The AI providers are temporarily rate-limited. Wait a minute, then retry.";
+  }
+  if (status >= 500 || code === "provider_unavailable") {
+    return "The AI service is temporarily unavailable. Retry in a moment.";
+  }
+  return "The AI request could not be completed. Retry, or edit the scene text manually.";
+}
+
+export function shouldRetryAiRequest(status: number, code?: string): boolean {
+  if (code === "quota_exceeded" || code === "authentication_required") return false;
+  return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+}
+
+async function readAiFailure(res: Response): Promise<AiRequestError> {
+  const body = (await res.json().catch(() => null)) as { code?: string } | null;
+  const code = (body?.code ?? "request_failed") as AiFailureCode;
+  return new AiRequestError(res.status, code, aiFailureMessage(res.status, code));
+}
+
 async function requestCaption(imageBase64: string): Promise<string> {
   let delay = 2000;
   for (let attempt = 0; attempt < 4; attempt++) {
@@ -27,12 +71,13 @@ async function requestCaption(imageBase64: string): Promise<string> {
       const { caption } = (await res.json()) as { caption: string };
       return caption;
     }
-    if (res.status === 429 && attempt < 3) {
+    const failure = await readAiFailure(res);
+    if (shouldRetryAiRequest(failure.status, failure.code) && attempt < 3) {
       await sleep(delay);
       delay *= 2;
       continue;
     }
-    throw new Error(`Analysis failed (${res.status})`);
+    throw failure;
   }
   throw new Error("Analysis failed after retries");
 }
@@ -52,23 +97,28 @@ async function captionAsset(asset: Asset): Promise<string> {
 }
 
 /** Analyzes every un-captioned asset, one at a time. Never throws. */
-export async function analyzeAssets(): Promise<void> {
+export async function analyzeAssets(): Promise<{ failed: number; error?: string }> {
   const { patchAsset } = useProject.getState();
+  let failed = 0;
+  let lastError: string | undefined;
   for (const asset of useProject.getState().assets) {
     if (asset.caption || asset.analysis === "done") continue;
     patchAsset(asset.id, { analysis: "analyzing" });
     try {
       const caption = await captionAsset(asset);
       patchAsset(asset.id, { caption, analysis: "done" });
-    } catch {
+    } catch (error) {
       patchAsset(asset.id, { analysis: "error" });
+      failed += 1;
+      lastError = error instanceof Error ? error.message : aiFailureMessage(500);
     }
     await sleep(SPACING_MS);
   }
+  return { failed, error: lastError };
 }
 
 /** Asks the LLM for a coherent per-scene script; falls back per-scene. */
-export async function generateScript(): Promise<void> {
+export async function generateScript(): Promise<string | null> {
   const state = useProject.getState();
   state.setScriptStatus("generating");
 
@@ -91,7 +141,7 @@ export async function generateScript(): Promise<void> {
         maxSeconds: (await import("@/config/templates")).limits.maxOutputSeconds,
       }),
     });
-    if (!res.ok) throw new Error(`Script generation failed (${res.status})`);
+    if (!res.ok) throw await readAiFailure(res);
     const { lines, title, subtitle, outro, outroSub } = (await res.json()) as {
       lines: { id: string; text: string }[];
       title?: string;
@@ -113,7 +163,8 @@ export async function generateScript(): Promise<void> {
       outroSub: outroSub ?? "",
     });
     state.setScriptStatus("ready");
-  } catch {
+    return null;
+  } catch (error) {
     // Fall back to captions so the user can still edit and continue — but
     // keep status "error" so the UI says these are raw descriptions, not
     // finished narration.
@@ -121,6 +172,7 @@ export async function generateScript(): Promise<void> {
       state.assets.map((a) => ({ assetId: a.id, line: a.caption || PLACEHOLDER })),
     );
     state.setScriptStatus("error");
+    return error instanceof Error ? error.message : aiFailureMessage(500);
   }
 }
 

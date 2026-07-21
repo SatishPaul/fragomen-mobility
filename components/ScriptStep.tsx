@@ -8,15 +8,28 @@ export function ScriptStep() {
   const { assets, scenes, context, cards, scriptStatus, setContext, setCards, patchScene } =
     useProject();
   const [running, setRunning] = useState(false);
+  const [failure, setFailure] = useState<{
+    analysisFailed: number;
+    analysisError?: string;
+    scriptError?: string;
+  } | null>(null);
 
   const analyzing = assets.some((a) => a.analysis === "analyzing");
   const assetById = new Map(assets.map((a) => [a.id, a]));
 
   async function run() {
     setRunning(true);
+    setFailure(null);
     try {
-      await analyzeAssets();
-      await generateScript();
+      const analysis = await analyzeAssets();
+      const scriptError = await generateScript();
+      if (analysis.failed > 0 || scriptError) {
+        setFailure({
+          analysisFailed: analysis.failed,
+          analysisError: analysis.error,
+          scriptError: scriptError ?? undefined,
+        });
+      }
     } finally {
       setRunning(false);
     }
@@ -70,9 +83,18 @@ export function ScriptStep() {
 
       {scriptStatus === "error" && scenes.length > 0 && (
         <p className="rounded-lg border border-amber-900/60 bg-amber-950/30 p-3 text-sm text-amber-300">
-          The script writer couldn&apos;t run, so these lines are raw image descriptions —
-          they won&apos;t sound like narration yet. Hit &ldquo;Re-analyze &amp; rewrite
-          script&rdquo; to retry, or edit the lines by hand.
+          {failure?.scriptError ?? "The script writer couldn't run."} These lines are raw
+          image descriptions and may not sound like narration yet. Select &ldquo;Re-analyze
+          &amp; rewrite script&rdquo; to retry, or edit the lines by hand.
+        </p>
+      )}
+
+      {scriptStatus !== "error" && failure && failure.analysisFailed > 0 && (
+        <p className="rounded-lg border border-amber-900/60 bg-amber-950/30 p-3 text-sm text-amber-300">
+          {failure.analysisFailed} {failure.analysisFailed === 1 ? "scene" : "scenes"} could
+          not be visually analyzed. {failure.analysisError} The script writer supplied a
+          bridging line; review the highlighted {failure.analysisFailed === 1 ? "scene" : "scenes"}
+          before creating the voiceover.
         </p>
       )}
 
@@ -101,7 +123,7 @@ export function ScriptStep() {
                       Scene {i + 1}
                       {asset.analysis === "error" && (
                         <span className="rounded bg-amber-900/50 px-1.5 py-0.5 normal-case text-amber-300">
-                          analysis failed — write this one yourself
+                          visual analysis unavailable — review this line
                         </span>
                       )}
                     </p>

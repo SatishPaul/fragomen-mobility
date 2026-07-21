@@ -147,7 +147,7 @@
       Complete the core walkthrough through Render and Download. Only run the optional publishing section when a real social account has been intentionally assigned and the named destination is approved.
     </div>
 
-    <div class="cover-meta">Version 1.2 | 21 July 2026 | Desktop Chrome recommended</div>
+    <div class="cover-meta">Version 1.3 | 21 July 2026 | Desktop Chrome recommended</div>
   </section>
 
   <section class="page">
@@ -231,7 +231,7 @@
 
     <div class="step"><div class="step-number">1</div><div><h4>Add your media</h4><p>Upload 3 to 5 photos or short clips. Reorder them with Move earlier/Move later and remove any unwanted item.</p><div class="expected">Expected: asset count appears and Format &amp; style unlocks.</div></div></div>
     <div class="step"><div class="step-number">2</div><div><h4>Choose format and style</h4><p>Select the target frame and one visual style. For a quick demo, use a short vertical or square output and keep the total under 30 seconds.</p></div></div>
-    <div class="step"><div class="step-number">3</div><div><h4>Generate narration</h4><p>Select the script-generation action. The app analyzes downscaled frames and writes one editable narration line per scene. Review and edit every line.</p><div class="expected">Expected: one script scene per uploaded asset; token use is recorded.</div></div></div>
+    <div class="step"><div class="step-number">3</div><div><h4>Generate narration</h4><p>Select the script-generation action. The app analyzes downscaled frames and writes one editable narration line per scene. Transient AI failures retry automatically. Review every line, especially any scene marked visual analysis unavailable.</p><div class="expected">Expected: one script scene per uploaded asset; token use is recorded. If AI remains unavailable, the warning explains whether to retry, sign in, or ask an administrator about quota.</div></div></div>
     <div class="step"><div class="step-number">4</div><div><h4>Generate voiceover</h4><p>Choose a voice, optionally preview it, then generate all voiceovers. The first browser-based voice run may download and cache the model.</p><div class="expected">Expected: each narrated scene receives an audio duration and Render unlocks.</div></div></div>
     <div class="step"><div class="step-number">5</div><div><h4>Render video</h4><p>Select <strong>Render video</strong> and keep the tab open. Rendering runs locally in the browser and may take several minutes.</p><div class="expected">Expected: progress reaches complete, a video preview appears, and the finished MP4 is saved privately.</div></div></div>
     <div class="step"><div class="step-number">6</div><div><h4>Download and inspect</h4><p>Select the Download control. Watch the full MP4 and verify order, crop, narration, timing, music level, watermark, and outro.</p></div></div>
@@ -335,7 +335,8 @@
       <tr><td>Invitation or reset link fails</td><td>Discard older emails, request one new link, and confirm it opens <code>fragomen-mobility.vercel.app</code>, never localhost.</td></tr>
       <tr><td>Login reports an expired link</td><td>Open Forgot password, send one new email, and use only that newest message.</td></tr>
       <tr><td>Email is already registered</td><td>Refresh Users. Update or delete an existing listed user; missing profiles are recovered when invited again.</td></tr>
-      <tr><td>AI request is rate limited</td><td>Wait one minute and retry; free model capacity can fluctuate.</td></tr>
+      <tr><td>AI is rate limited or unavailable</td><td>The app retries transient failures automatically. If the warning remains, wait one minute and select Re-analyze &amp; rewrite script.</td></tr>
+      <tr><td>Monthly AI token limit reached</td><td>Ask an administrator to raise the user's monthly limit, or wait for the next monthly reset.</td></tr>
       <tr><td>Voice model is slow on first use</td><td>Keep the tab open while the one-time browser model download completes.</td></tr>
       <tr><td>Render is slow</td><td>Use desktop Chrome, fewer assets, and a shorter 720p output.</td></tr>
       <tr><td>Publishing account is missing</td><td>Ask the administrator to connect and assign that exact Outstand account.</td></tr>

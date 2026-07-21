@@ -12,7 +12,14 @@ type Reservation = {
   eventId: string;
 };
 
-export class QuotaError extends Error {}
+export class QuotaError extends Error {
+  constructor(
+    message: string,
+    readonly code: "authentication_required" | "quota_exceeded" | "usage_unavailable",
+  ) {
+    super(message);
+  }
+}
 
 export function providerName(baseUrl: string) {
   return baseUrl.includes("groq.com") ? "groq" : "openrouter";
@@ -28,7 +35,7 @@ export async function reserveUsage(
   if (!isSupabaseConfigured()) return null;
 
   const { supabase, user } = await getAuthenticatedUser();
-  if (!user) throw new QuotaError("Authentication required.");
+  if (!user) throw new QuotaError("Authentication required.", "authentication_required");
   const { data, error } = await supabase.rpc("reserve_usage", {
     requested_operation: operation,
     requested_provider: provider,
@@ -37,7 +44,13 @@ export async function reserveUsage(
     requested_request_id: requestId,
   });
 
-  if (error) throw new QuotaError(error.message.includes("quota") ? "Monthly token quota exceeded." : error.message);
+  if (error) {
+    const quotaExceeded = error.message.toLowerCase().includes("quota");
+    throw new QuotaError(
+      quotaExceeded ? "Monthly token quota exceeded." : "Usage tracking is temporarily unavailable.",
+      quotaExceeded ? "quota_exceeded" : "usage_unavailable",
+    );
+  }
   const event = Array.isArray(data) ? data[0] : data;
   return { client: supabase, eventId: event.id };
 }
