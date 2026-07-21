@@ -1,0 +1,64 @@
+import Link from "next/link";
+import { Eye, Film, Gauge, Heart, Send, TrendingUp } from "lucide-react";
+import { Header } from "@/components/Header";
+import { SyncAnalyticsButton } from "@/components/SyncAnalyticsButton";
+import { requireUser } from "@/lib/server/auth";
+
+export default async function DashboardPage() {
+  const { supabase, profile } = await requireUser();
+  const monthStart = new Date();
+  monthStart.setUTCDate(1);
+  monthStart.setUTCHours(0, 0, 0, 0);
+
+  const [
+    { data: usage },
+    { data: videos },
+    { data: publications },
+    { count: videoCount },
+    { count: publicationCount },
+    { data: snapshots },
+  ] = await Promise.all([
+    supabase.from("usage_events").select("total_tokens,reserved_tokens,status").gte("created_at", monthStart.toISOString()),
+    supabase.from("videos").select("id,title,storage_path,filename,duration_seconds,created_at").is("deleted_at", null).order("created_at", { ascending: false }).limit(6),
+    supabase.from("publications").select("id,status,outstand_post_id,created_at,publication_destinations(platform,remote_url,status)").order("created_at", { ascending: false }).limit(6),
+    supabase.from("videos").select("id", { count: "exact", head: true }).is("deleted_at", null),
+    supabase.from("publications").select("id", { count: "exact", head: true }),
+    supabase.from("analytics_snapshots").select("publication_destination_id,views,likes,comments,shares,impressions,reach,captured_at").order("captured_at", { ascending: false }).limit(500),
+  ]);
+
+  const usedTokens = usage?.reduce((sum, event) => sum + (["succeeded", "failed"].includes(event.status) ? Number(event.total_tokens || 0) : 0), 0) || 0;
+  const reservedTokens = usage?.reduce((sum, event) => sum + (event.status === "reserved" ? Number(event.reserved_tokens || 0) : 0), 0) || 0;
+  const quotaPercent = profile.monthly_token_quota > 0 ? Math.min(100, Math.round(((usedTokens + reservedTokens) / profile.monthly_token_quota) * 100)) : 0;
+  const latestSnapshots = new Map<string, NonNullable<typeof snapshots>[number]>();
+  for (const snapshot of snapshots || []) {
+    if (!latestSnapshots.has(snapshot.publication_destination_id)) {
+      latestSnapshots.set(snapshot.publication_destination_id, snapshot);
+    }
+  }
+  const socialTotals = [...latestSnapshots.values()].reduce((totals, snapshot) => ({
+    views: totals.views + Number(snapshot.views || snapshot.impressions || 0),
+    likes: totals.likes + Number(snapshot.likes || 0),
+  }), { views: 0, likes: 0 });
+  const cards = [
+    { label: "Tokens this month", value: usedTokens.toLocaleString(), icon: Gauge },
+    { label: "Quota remaining", value: Math.max(0, profile.monthly_token_quota - usedTokens - reservedTokens).toLocaleString(), icon: TrendingUp },
+    { label: "Saved videos", value: String(videoCount || 0), icon: Film },
+    { label: "Publications", value: String(publicationCount || 0), icon: Send },
+    { label: "Social views", value: socialTotals.views.toLocaleString(), icon: Eye },
+    { label: "Social likes", value: socialTotals.likes.toLocaleString(), icon: Heart },
+  ];
+  const videoDownloads = new Map<string, string>();
+  await Promise.all((videos || []).map(async (video) => {
+    const { data } = await supabase.storage.from("videos").createSignedUrl(video.storage_path, 900);
+    if (data?.signedUrl) videoDownloads.set(video.id, data.signedUrl);
+  }));
+
+  return (
+    <><Header /><main className="mx-auto max-w-6xl px-4 py-10 sm:px-6"><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase text-accent">Workspace</p><h1 className="mt-2 font-serif text-3xl text-heading">{profile.display_name ? `${profile.display_name}'s dashboard` : "Your dashboard"}</h1></div><Link href="/create" className="bg-accent px-5 py-2.5 text-sm font-semibold text-accent-fg">Create video</Link></div>
+      <section className="mt-8 grid gap-px bg-edge sm:grid-cols-2 lg:grid-cols-3">{cards.map(({ label, value, icon: Icon }) => <div key={label} className="bg-surface p-5"><Icon className="h-5 w-5 text-accent" aria-hidden="true" /><p className="mt-5 text-2xl font-semibold text-heading">{value}</p><p className="mt-1 text-xs uppercase text-muted">{label}</p></div>)}</section>
+      <section className="mt-8 border border-edge bg-surface p-6"><div className="flex justify-between text-sm"><span className="font-medium text-heading">Monthly token quota</span><span className="text-muted">{(usedTokens + reservedTokens).toLocaleString()} / {profile.monthly_token_quota.toLocaleString()}</span></div><div className="mt-3 h-2 bg-raised"><div className="h-full bg-accent" style={{ width: `${quotaPercent}%` }} /></div></section>
+      <div className="mt-8 grid gap-6 lg:grid-cols-2"><section><h2 className="font-serif text-xl text-heading">Recent videos</h2><div className="mt-3 border border-edge bg-surface">{videos?.length ? videos.map((video) => <div key={video.id} className="flex items-center justify-between border-b border-edge p-4 last:border-0"><div><p className="font-medium text-heading">{video.title}</p><p className="mt-1 text-xs text-muted">{video.filename}</p></div><div className="text-right"><time className="block text-xs text-muted">{new Date(video.created_at).toLocaleDateString()}</time>{videoDownloads.get(video.id) && <a href={videoDownloads.get(video.id)} className="mt-2 inline-block text-xs text-accent hover:underline">Download</a>}</div></div>) : <p className="p-5 text-sm text-muted">Completed videos will appear here.</p>}</div></section>
+      <section><h2 className="font-serif text-xl text-heading">Publishing activity</h2><div className="mt-3 border border-edge bg-surface">{publications?.length ? publications.map((publication) => <div key={publication.id} className="flex items-start justify-between gap-4 border-b border-edge p-4 last:border-0"><div><p className="capitalize text-heading">{publication.status}</p><div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">{publication.publication_destinations?.length ? publication.publication_destinations.map((destination: { platform: string; remote_url: string | null }) => destination.remote_url ? <a key={`${publication.id}-${destination.platform}`} href={destination.remote_url} target="_blank" rel="noreferrer" className="text-accent hover:underline">{destination.platform}</a> : <span key={`${publication.id}-${destination.platform}`}>{destination.platform}</span>) : "No destinations"}</div></div><div className="flex flex-col items-end gap-2"><time className="text-xs text-muted">{new Date(publication.created_at).toLocaleDateString()}</time>{publication.status === "published" && publication.outstand_post_id && <SyncAnalyticsButton postId={publication.outstand_post_id} />}</div></div>) : <p className="p-5 text-sm text-muted">Published posts and performance will appear here.</p>}</div></section></div>
+    </main></>
+  );
+}

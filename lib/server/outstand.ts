@@ -5,6 +5,7 @@ import type {
   OutstandCreatePostRequest,
   OutstandMedia,
   OutstandPost,
+  OutstandPostAnalytics,
   OutstandSocialAccount,
 } from "@/lib/outstand/types";
 
@@ -126,4 +127,14 @@ export async function getPost(id: string): Promise<OutstandPost> {
     `/posts/${encodeURIComponent(id)}`,
   );
   return response.post;
+}
+
+export async function getPostAnalytics(id: string): Promise<OutstandPostAnalytics> {
+  const response = await outstandRequest<OutstandPostAnalytics & { success: boolean }>(
+    `/posts/${encodeURIComponent(id)}/analytics`,
+  );
+  if (!Array.isArray(response.metrics_by_account)) {
+    throw new OutstandError("Outstand returned invalid post analytics.");
+  }
+  return response;
 }

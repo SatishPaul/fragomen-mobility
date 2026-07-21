@@ -6,6 +6,7 @@ import {
   warmLocalTts,
 } from "@/lib/server/kokoro";
 import { clientIp, throttled } from "@/lib/server/throttle";
+import { finalizeUsage, QuotaError, reserveUsage } from "@/lib/server/usage";
 
 /**
  * Server TTS. GET reports which provider is active plus the voice list; POST
@@ -115,6 +116,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
   const { text, voice } = parsed.data;
+  const requestId = crypto.randomUUID();
 
   try {
     let audioBase64: string;
@@ -122,11 +124,10 @@ export async function POST(req: Request) {
     if (provider === "local" || isKokoroVoice(voice)) {
       // Kokoro voice ids always go to the local engine, whichever keyed
       // provider is active — its voices are offered alongside theirs.
-      audioBase64 = await localTts(text, voice);
+      audioBase64 = await meteredLocalTts(text, voice, `${requestId}:local`);
     } else {
       try {
-        audioBase64 =
-          provider === "groq" ? await groqTts(text, voice) : await openrouterTts(text, voice);
+        audioBase64 = await meteredRemoteTts(provider, text, voice, `${requestId}:${provider}`);
       } catch (e) {
         // Rate limits are worth waiting out client-side (keeps the chosen
         // voice); anything else falls back to the local server voice so the
@@ -136,7 +137,7 @@ export async function POST(req: Request) {
           e instanceof TtsError && e.detail ? e.detail : "upstream TTS provider failed";
         if (!serverLocalTtsAvailable) throw e;
         console.error(`[tts] ${provider} failed, using local voice:`, reason);
-        audioBase64 = await localTts(text, voice);
+        audioBase64 = await meteredLocalTts(text, voice, `${requestId}:fallback-local`);
         fallback = { from: provider, reason };
       }
     }
@@ -145,6 +146,9 @@ export async function POST(req: Request) {
     }
     return NextResponse.json({ audioBase64, format: "wav", ...(fallback && { fallback }) });
   } catch (e) {
+    if (e instanceof QuotaError) {
+      return NextResponse.json({ error: e.message }, { status: 429 });
+    }
     const status = e instanceof TtsError ? e.status : 502;
     const detail = e instanceof TtsError ? e.detail : "";
     console.error(`[tts] ${provider} failed:`, e instanceof Error ? e.message : e);
@@ -152,6 +156,70 @@ export async function POST(req: Request) {
       { error: detail ? `TTS failed: ${detail}` : "TTS failed" },
       { status },
     );
+  }
+}
+
+function wavDurationSeconds(audioBase64: string): number | null {
+  try {
+    const wav = Buffer.from(audioBase64, "base64");
+    if (wav.length < 44 || wav.toString("ascii", 0, 4) !== "RIFF") return null;
+    const byteRate = wav.readUInt32LE(28);
+    let offset = 12;
+    while (offset + 8 <= wav.length) {
+      const chunk = wav.toString("ascii", offset, offset + 4);
+      const size = wav.readUInt32LE(offset + 4);
+      if (chunk === "data" && byteRate > 0) return size / byteRate;
+      offset += 8 + size + (size % 2);
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+async function meteredLocalTts(text: string, voice: string, requestId: string) {
+  const reservation = await reserveUsage("tts", "local", "kokoro-82m", 0, requestId);
+  try {
+    const audio = await localTts(text, voice);
+    await finalizeUsage(reservation, "succeeded", {
+      characters: text.length,
+      audioSeconds: wavDurationSeconds(audio),
+      metadata: { voice },
+    });
+    return audio;
+  } catch (error) {
+    await finalizeUsage(reservation, "failed", {
+      characters: text.length,
+      errorCode: error instanceof Error ? error.name : "tts_error",
+      metadata: { voice },
+    });
+    throw error;
+  }
+}
+
+async function meteredRemoteTts(
+  provider: Exclude<Provider, "local" | null>,
+  text: string,
+  voice: string,
+  requestId: string,
+) {
+  const model = provider === "groq" ? serverTts.groqModel : serverTts.openrouterModel;
+  const reservation = await reserveUsage("tts", provider, model, 0, requestId);
+  try {
+    const audio = provider === "groq" ? await groqTts(text, voice) : await openrouterTts(text, voice);
+    await finalizeUsage(reservation, "succeeded", {
+      characters: text.length,
+      audioSeconds: wavDurationSeconds(audio),
+      metadata: { voice },
+    });
+    return audio;
+  } catch (error) {
+    await finalizeUsage(reservation, "failed", {
+      characters: text.length,
+      errorCode: error instanceof TtsError ? String(error.status) : "tts_error",
+      metadata: { voice },
+    });
+    throw error;
   }
 }
 

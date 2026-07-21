@@ -54,3 +54,35 @@ export interface OutstandCreatePostRequest {
   accounts: string[];
   mediaIds: string[];
 }
+
+export interface OutstandPostAnalyticsMetric {
+  social_account: OutstandSocialAccount;
+  platform_post_id: string | null;
+  platform_post_url: string | null;
+  published_at: string | null;
+  metrics: {
+    likes?: number;
+    comments?: number;
+    shares?: number;
+    views?: number;
+    impressions?: number;
+    reach?: number;
+    engagement_rate?: number;
+    platform_specific?: Record<string, unknown>;
+  };
+  metrics_error?: { code: string; message: string } | null;
+}
+
+export interface OutstandPostAnalytics {
+  post: { id: string; publishedAt: string | null; createdAt: string };
+  metrics_by_account: OutstandPostAnalyticsMetric[];
+  aggregated_metrics: {
+    total_likes?: number;
+    total_comments?: number;
+    total_shares?: number;
+    total_views?: number;
+    total_impressions?: number;
+    total_reach?: number;
+    average_engagement_rate?: number;
+  };
+}

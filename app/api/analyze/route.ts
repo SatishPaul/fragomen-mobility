@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { groqFallback, models } from "@/config/models";
 import { clientIp, throttled } from "@/lib/server/throttle";
+import { completionUsage, finalizeUsage, providerName, QuotaError, reserveUsage } from "@/lib/server/usage";
 
 /**
  * POST /api/analyze — captions one downscaled frame via an OpenRouter vision
@@ -54,8 +55,12 @@ export async function POST(req: Request) {
   ].filter(Boolean) as { baseUrl: string; key: string; model: string }[];
 
   let lastStatus = 502;
+  const requestId = crypto.randomUUID();
   for (const c of candidates) {
+    const provider = providerName(c.baseUrl);
+    let reservation: Awaited<ReturnType<typeof reserveUsage>> = null;
     try {
+      reservation = await reserveUsage("analyze", provider, c.model, 750, requestId);
       const res = await fetch(`${c.baseUrl}/chat/completions`, {
         method: "POST",
         headers: {
@@ -92,17 +97,25 @@ export async function POST(req: Request) {
 
       if (!res.ok) {
         lastStatus = res.status === 429 ? 429 : 502;
+        await finalizeUsage(reservation, "failed", { errorCode: `http_${res.status}` });
         continue;
       }
       const data = await res.json();
+      const usage = completionUsage(data);
       const caption: string | undefined =
         data?.choices?.[0]?.message?.content?.trim();
       if (!caption) {
         lastStatus = 502;
+        await finalizeUsage(reservation, "failed", { ...usage, errorCode: "empty_response" });
         continue;
       }
+      await finalizeUsage(reservation, "succeeded", usage);
       return NextResponse.json({ caption });
-    } catch {
+    } catch (error) {
+      if (error instanceof QuotaError) {
+        return NextResponse.json({ error: error.message }, { status: 429 });
+      }
+      await finalizeUsage(reservation, "failed", { errorCode: "request_error" });
       lastStatus = 502;
     }
   }

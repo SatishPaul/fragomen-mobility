@@ -5,11 +5,12 @@ description: Deploy and operate the browser-based narrated video maker
 
 Turn photos and short clips into a finished, voiceover-narrated social video. Media editing, voice generation, and rendering run in the browser. You can download the MP4 or explicitly publish it through Outstand after reviewing the exact destination accounts.
 
-- **Hosting:** Vercel Hobby (no persistent server storage; API routes keep provider keys private)
-- **AI:** OpenRouter free-tier models (vision captions + script writing)
-- **Voiceover:** Kokoro-82M running in the browser (open-source, $0)
-- **Rendering:** ffmpeg.wasm in the browser (Ken Burns motion, watermark, outro card)
-- **Publishing:** Optional direct browser upload to Outstand after confirmation
+* **Hosting:** Vercel with server-only provider credentials
+* **Identity and data:** Supabase Auth, Postgres with RLS, and private Storage
+* **AI:** OpenRouter and Groq for captions, scripts, and optional server TTS
+* **Voiceover:** Provider TTS or Kokoro-82M local fallback
+* **Rendering:** ffmpeg.wasm in the browser
+* **Publishing:** Optional direct browser upload to Outstand after confirmation
 
 Primary supported target: **desktop Chrome**. Mobile browsers work best-effort with a 720p cap.
 
@@ -26,13 +27,23 @@ Primary supported target: **desktop Chrome**. Mobile browsers work best-effort w
    | `OPENROUTER_API_KEY` | ✅ | Your OpenRouter key |
    | `GROQ_API_KEY` | optional | Free key from [console.groq.com](https://console.groq.com) — enables higher-quality server TTS voices |
    | `TTS_PROVIDER` | optional | `auto` (default) / `local` / `groq` / `openrouter` / `off` — see §4 |
-   | `APP_PASSWORD` | optional | Set to enable a simple shared-password gate |
-  | `OUTSTAND_API_KEY` | optional | Replacement server-only Outstand key; requires `APP_PASSWORD` |
-  | `SOCIAL_VIDEO_MAX_BYTES` | optional | Maximum publish upload size in bytes; defaults to 524288000 |
+  | `NEXT_PUBLIC_SUPABASE_URL` | required for multi-user mode | Supabase project URL |
+  | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | required for multi-user mode | Supabase anonymous public key |
+  | `SUPABASE_SERVICE_ROLE_KEY` | required for administration | Server-only Supabase service-role key |
+  | `INITIAL_ADMIN_EMAIL` | required for administration | Email promoted on its first authenticated request |
+  | `OUTSTAND_API_KEY` | optional | Server-only Outstand key |
+  | `OUTSTAND_WEBHOOK_SECRET` | optional | HMAC secret configured for the Outstand webhook |
+  | `SOCIAL_VIDEO_MAX_BYTES` | optional | Maximum publish upload size; defaults to 524288000 |
+  | `APP_PASSWORD` | legacy fallback only | Shared publishing gate when Supabase is not configured |
    | `OPENROUTER_VISION_MODEL` | optional | Override the vision model ID |
    | `OPENROUTER_SCRIPT_MODEL` | optional | Override the script model ID |
 
-4. **Deploy.** That's it — there is no database and nothing else to configure.
+4. In Supabase SQL Editor, apply
+  `supabase/migrations/202607200001_multi_user_platform.sql`.
+5. In Supabase Auth URL Configuration, set the Site URL to the production URL
+  and allow `/auth/callback` for local, Preview, and Production URLs.
+6. Deploy, then sign in with `INITIAL_ADMIN_EMAIL`. The first authenticated
+  request promotes that profile to administrator.
 
 > **Note:** the Vercel Hobby plan's fair-use policy prohibits commercial use. If you monetize your deployment, upgrade to Vercel Pro.
 
@@ -82,9 +93,9 @@ Voice lists per provider are editable in `config/models.ts`.
 
 ## 6. Social publishing
 
-Publishing is optional and disabled unless both `APP_PASSWORD` and
-`OUTSTAND_API_KEY` are configured. Use a newly generated Outstand key. Never
-reuse a key that has appeared in source code, chat, logs, or screenshots.
+Publishing is optional and disabled unless `OUTSTAND_API_KEY` is configured.
+In multi-user mode, administrators assign each connected social account to one
+user. The server revalidates that assignment for every publication.
 
 1. Connect social accounts in the Publish step. OAuth opens in a popup so the
   in-memory render remains available.
@@ -104,10 +115,28 @@ when already connected, but the app does not collect Bluesky app passwords.
 
 The application allows finished videos up to 500 MB by default. A signed upload
 URL is short-lived and must be treated as a credential. It is kept in browser
-memory only. Rendered files and confirmed media IDs are also memory-only, so a
-page refresh requires rendering again. Outstand controls provider-side media
-retention; verify its current retention policy before expanding beyond a small
-trusted pilot.
+memory only. Completed MP4s are uploaded to the private `videos` Supabase
+Storage bucket and recorded in the user's history. Source photos, source clips,
+and drafts remain in the browser. Dashboard downloads use 15-minute signed
+URLs.
+
+Published destinations, native post URLs, and status are stored per user.
+Select **Refresh performance** on a published item to retrieve Outstand post
+analytics. The dashboard keeps the newest snapshot for each destination and
+shows available views and likes. Platform permissions determine which metrics
+are returned; unavailable fields remain null. Manual refresh avoids unexpected
+cost from platform APIs such as X post reads.
+
+For status webhooks, configure this HTTPS endpoint in Outstand:
+
+```text
+https://YOUR_DOMAIN/api/webhooks/outstand
+```
+
+Use the same value for the Outstand signing secret and
+`OUTSTAND_WEBHOOK_SECRET`. Subscribe to `post.published` and `post.error`.
+The endpoint verifies `X-Outstand-Signature`, records replay-resistant receipts,
+and applies idempotent publication updates.
 
 To rotate publishing access:
 
@@ -125,6 +154,8 @@ Browser: upload → thumbnails → AI captions (downscaled frames only) → edit
   → optional direct PUT to an Outstand signed media URL after confirmation
 Vercel:  POST /api/analyze + POST /api/script + POST /api/tts for keyed providers
   + small authenticated JSON requests for accounts, OAuth, media, and posts
+Supabase: Auth sessions + RLS-owned usage, videos, publications, analytics
+  + private completed-video storage
 ```
 
 - **COOP/COEP headers** are set in `next.config.ts` — required for multithreaded ffmpeg.wasm (`SharedArrayBuffer`). If you add third-party scripts/embeds, they must be CORS/CORP-compatible or rendering will break.
@@ -136,8 +167,9 @@ Vercel:  POST /api/analyze + POST /api/script + POST /api/tts for keyed provider
 - Render speed depends on the user's device (that's the price of $0 hosting). A 90 s video takes a few minutes on a mid-range laptop.
 - Kokoro voices are good open-source quality, English-focused.
 - Closing the tab mid-render loses the render (the draft project survives).
-- Refreshing or closing the page after rendering loses the in-memory publishing
-  file and confirmed media ID. Download the MP4 before leaving the page.
+- A render remains in memory for the current publishing workflow and is also
+  saved privately for later download. Publishing a historical video is not yet
+  exposed as a dashboard command.
 - Publishing is immediate only. Scheduled posts are not implemented.
 - iPhone HEVC `.mov` clips may fail to decode in ffmpeg.wasm on some devices — if a clip errors, export/convert it to MP4 (H.264) first.
 

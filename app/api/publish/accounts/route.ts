@@ -7,8 +7,18 @@ export const runtime = "nodejs";
 
 export async function GET(): Promise<NextResponse> {
   try {
-    await requirePublishingSession();
-    const accounts = await listSocialAccounts();
+    const session = (await requirePublishingSession()) ?? { userId: null, supabase: null };
+    let accounts = await listSocialAccounts();
+    if (session.userId && session.supabase) {
+      const { data: assignments, error } = await session.supabase
+        .from("social_account_assignments")
+        .select("outstand_account_id")
+        .eq("user_id", session.userId)
+        .eq("is_active", true);
+      if (error) throw error;
+      const assignedIds = new Set(assignments?.map((assignment) => assignment.outstand_account_id));
+      accounts = accounts.filter((account) => assignedIds.has(account.id));
+    }
     const health = await Promise.all(accounts.map(async (account) => {
       try {
         return await getAccountHealth(account.id);

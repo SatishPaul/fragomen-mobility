@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { groqFallback, models } from "@/config/models";
 import { clientIp, throttled } from "@/lib/server/throttle";
+import { completionUsage, finalizeUsage, providerName, QuotaError, reserveUsage } from "@/lib/server/usage";
 
 /**
  * POST /api/script — turns per-scene captions + optional user context into a
@@ -116,9 +117,19 @@ export async function POST(req: Request) {
   type CardFields = { title: string; subtitle: string; outro: string; outroSub: string };
   let best: { lines: { id: string; text: string }[]; covered: number; cards: CardFields } | null =
     null;
+  const requestId = crypto.randomUUID();
 
   for (const a of attempts) {
+    const provider = providerName(a.baseUrl);
+    let reservation: Awaited<ReturnType<typeof reserveUsage>> = null;
     try {
+      reservation = await reserveUsage(
+        "script",
+        provider,
+        a.model,
+        3500 + Math.ceil(prompt.length / 4),
+        requestId,
+      );
       const res = await fetch(`${a.baseUrl}/chat/completions`, {
         method: "POST",
         headers: {
@@ -146,6 +157,7 @@ export async function POST(req: Request) {
       });
       if (!res.ok) {
         const errBody = await res.text().catch(() => "");
+        await finalizeUsage(reservation, "failed", { errorCode: `http_${res.status}` });
         console.error(`[script] ${a.model}: HTTP ${res.status} ${errBody.slice(0, 300)}`);
         // Rate limits clear in seconds — pause for the provider's suggested
         // interval (capped) instead of burning the retry immediately.
@@ -157,16 +169,19 @@ export async function POST(req: Request) {
       }
 
       const data = await res.json();
+      const usage = completionUsage(data);
       const raw: string = data?.choices?.[0]?.message?.content ?? "";
       const jsonText = raw.replace(/```json|```/g, "").trim();
       const start = jsonText.indexOf("{");
       const end = jsonText.lastIndexOf("}");
       if (start === -1 || end === -1) {
+        await finalizeUsage(reservation, "failed", { ...usage, errorCode: "invalid_json" });
         console.error(`[script] ${a.model}: no JSON in reply (${raw.length} chars): ${raw.slice(0, 160)}`);
         continue;
       }
       const result = Lines.safeParse(JSON.parse(jsonText.slice(start, end + 1)));
       if (!result.success) {
+        await finalizeUsage(reservation, "failed", { ...usage, errorCode: "schema_mismatch" });
         console.error(`[script] ${a.model}: schema mismatch — ${result.error.issues[0]?.message}`);
         continue;
       }
@@ -182,12 +197,18 @@ export async function POST(req: Request) {
       };
       const covered = lines.filter((l) => l.text).length;
       if (covered < scenes.length) {
+        await finalizeUsage(reservation, "succeeded", { ...usage, metadata: { coveredScenes: covered, totalScenes: scenes.length } });
         console.error(`[script] ${a.model}: missing scenes (got ${covered}/${scenes.length})`);
         if (!best || covered > best.covered) best = { lines, covered, cards };
         continue;
       }
+      await finalizeUsage(reservation, "succeeded", usage);
       return NextResponse.json({ lines, ...cards });
     } catch (e) {
+      if (e instanceof QuotaError) {
+        return NextResponse.json({ error: e.message }, { status: 429 });
+      }
+      await finalizeUsage(reservation, "failed", { errorCode: "request_error" });
       console.error(`[script] ${a.model}: ${e instanceof Error ? e.message : e}`);
     }
   }

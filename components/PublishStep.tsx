@@ -8,7 +8,7 @@ import {
   failedAccountIds,
   type PublishOutcome,
 } from "@/lib/publishing";
-import { getLatestRenderOutput } from "@/lib/render-output";
+import { getLatestRenderOutput, getLatestSavedVideoId } from "@/lib/render-output";
 import { useProject } from "@/lib/store";
 import type { SocialAccount } from "@/lib/types";
 
@@ -120,7 +120,13 @@ export function PublishStep() {
     const post = await api<{ id: string }>("/api/publish/posts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accountIds, content, mediaId }),
+      body: JSON.stringify({
+        accountIds,
+        content,
+        mediaId,
+        videoId: getLatestSavedVideoId(),
+        idempotencyKey: crypto.randomUUID(),
+      }),
     });
     setPublish({ status: "pending", error: undefined });
     await pollPost(post.id);
