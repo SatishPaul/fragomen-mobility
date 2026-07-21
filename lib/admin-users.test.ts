@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateAdminMutation } from "./admin-users";
+import { summarizeTokenPool, validateAdminMutation } from "./admin-users";
 
 const baseMutation = {
   actorId: "admin-1",
@@ -46,5 +46,27 @@ describe("administrator user mutation policy", () => {
   it("allows regular users to be updated or deleted", () => {
     expect(() => validateAdminMutation({ ...baseMutation, nextRole: "admin" })).not.toThrow();
     expect(() => validateAdminMutation({ ...baseMutation, deleteUser: true })).not.toThrow();
+  });
+});
+
+describe("shared monthly token pool", () => {
+  it("deducts active regular-user limits from the shared pool", () => {
+    expect(summarizeTokenPool(100_000, [
+      { role: "admin", is_active: true, monthly_token_quota: 100_000 },
+      { role: "user", is_active: true, monthly_token_quota: 2_000 },
+    ])).toEqual({ total: 100_000, allocated: 2_000, unallocated: 98_000 });
+  });
+
+  it("reclaims limits from inactive users and excludes administrators", () => {
+    expect(summarizeTokenPool(100_000, [
+      { role: "user", is_active: false, monthly_token_quota: 20_000 },
+      { role: "admin", is_active: true, monthly_token_quota: 50_000 },
+    ])).toEqual({ total: 100_000, allocated: 0, unallocated: 100_000 });
+  });
+
+  it("rejects limits that exceed the shared pool", () => {
+    expect(() => summarizeTokenPool(100_000, [
+      { role: "user", is_active: true, monthly_token_quota: 102_000 },
+    ])).toThrow("User limits exceed the shared monthly pool by 2,000 tokens.");
   });
 });

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { validateAdminMutation, type ManagedRole } from "@/lib/admin-users";
+import { summarizeTokenPool, validateAdminMutation, type ManagedRole, type TokenAllocation } from "@/lib/admin-users";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAppUrl } from "@/lib/server/app-url";
 import { AuthorizationError, requireAdminApi } from "@/lib/server/auth";
@@ -42,12 +42,48 @@ async function findAuthUserByEmail(email: string) {
 async function getMutationContext(userId: string) {
   const admin = createAdminClient();
   const [{ data: target, error: targetError }, { count, error: countError }] = await Promise.all([
-    admin.from("profiles").select("id,email,role,is_active").eq("id", userId).single(),
+    admin.from("profiles").select("id,email,role,is_active,monthly_token_quota").eq("id", userId).single(),
     admin.from("profiles").select("id", { count: "exact", head: true }).eq("role", "admin").eq("is_active", true),
   ]);
   if (targetError) throw targetError;
   if (countError) throw countError;
   return { target, activeAdminCount: count || 0 };
+}
+
+async function validatePoolAllocation(proposed: TokenAllocation & { id?: string }) {
+  const admin = createAdminClient();
+  const [{ data: setting, error: settingError }, { data: profiles, error: profilesError }] = await Promise.all([
+    admin.from("token_pool_settings").select("monthly_token_budget").eq("id", true).single(),
+    admin.from("profiles").select("id,role,is_active,monthly_token_quota"),
+  ]);
+  if (settingError) throw settingError;
+  if (profilesError) throw profilesError;
+
+  const allocations = (profiles || [])
+    .filter((profile) => profile.id !== proposed.id)
+    .map((profile) => ({
+      role: profile.role as ManagedRole,
+      is_active: profile.is_active,
+      monthly_token_quota: Number(profile.monthly_token_quota),
+    }));
+  allocations.push(proposed);
+  return summarizeTokenPool(Number(setting.monthly_token_budget), allocations);
+}
+
+async function setProfileAllocation(
+  userId: string,
+  quota: number,
+  role: ManagedRole,
+  isActive: boolean,
+) {
+  const admin = createAdminClient();
+  const { error } = await admin.rpc("manage_profile_token_allocation", {
+    target_user_id: userId,
+    next_quota: quota,
+    next_role: role,
+    next_is_active: isActive,
+  });
+  if (error) throw error;
 }
 
 function adminError(error: unknown) {
@@ -59,12 +95,20 @@ function adminError(error: unknown) {
 export async function GET() {
   try {
     const { supabase, user: actor } = await requireAdminApi();
-    const [{ data: users, error: usersError }, { data: assignments }, accounts] = await Promise.all([
+    const [{ data: users, error: usersError }, { data: assignments }, { data: setting, error: settingError }, accounts] = await Promise.all([
       supabase.from("profiles").select("id,email,display_name,role,is_active,monthly_token_quota,created_at").order("created_at"),
       supabase.from("social_account_assignments").select("user_id,outstand_account_id"),
+      supabase.from("token_pool_settings").select("monthly_token_budget").eq("id", true).single(),
       listSocialAccounts().catch(() => []),
     ]);
     if (usersError) throw usersError;
+    if (settingError) throw settingError;
+
+    const tokenPool = summarizeTokenPool(Number(setting.monthly_token_budget), (users || []).map((user) => ({
+      role: user.role as ManagedRole,
+      is_active: user.is_active,
+      monthly_token_quota: Number(user.monthly_token_quota),
+    })));
 
     return NextResponse.json({
       users: users?.map((user) => ({
@@ -72,6 +116,7 @@ export async function GET() {
         accountIds: assignments?.filter((assignment) => assignment.user_id === user.id).map((assignment) => assignment.outstand_account_id) || [],
       })) || [],
       currentUserId: actor.id,
+      tokenPool,
       accounts: accounts.map((account) => ({ id: account.id, platform: account.network, name: account.nickname || account.username })),
     });
   } catch (error) {
@@ -86,6 +131,11 @@ export async function POST(request: NextRequest) {
     const admin = createAdminClient();
     const origin = getAppUrl(request.nextUrl.origin);
     const normalizedEmail = input.email.trim().toLowerCase();
+    await validatePoolAllocation({
+      role: input.role,
+      is_active: true,
+      monthly_token_quota: input.monthlyTokenQuota,
+    });
     const existingAuthUser = await findAuthUserByEmail(normalizedEmail);
 
     if (existingAuthUser) {
@@ -104,9 +154,10 @@ export async function POST(request: NextRequest) {
         email: normalizedEmail,
         display_name: input.displayName || null,
         role: input.role,
-        monthly_token_quota: input.monthlyTokenQuota,
+        monthly_token_quota: 0,
       });
       if (insertError) throw insertError;
+      await setProfileAllocation(existingAuthUser.id, input.monthlyTokenQuota, input.role, true);
 
       const { error: resetError } = await admin.auth.resetPasswordForEmail(normalizedEmail, {
         redirectTo: `${origin}/auth/callback?next=/reset-password`,
@@ -131,10 +182,9 @@ export async function POST(request: NextRequest) {
 
     const { error: profileError } = await admin.from("profiles").update({
       display_name: input.displayName || null,
-      monthly_token_quota: input.monthlyTokenQuota,
-      role: input.role,
     }).eq("id", data.user.id);
     if (profileError) throw profileError;
+    await setProfileAllocation(data.user.id, input.monthlyTokenQuota, input.role, true);
 
     await admin.from("admin_audit_events").insert({
       actor_user_id: actor.id,
@@ -165,16 +215,24 @@ export async function PATCH(request: NextRequest) {
       activeAdminCount,
     });
 
+    const nextQuota = input.monthlyTokenQuota ?? Number(target.monthly_token_quota);
+    const nextRole = input.role ?? target.role as ManagedRole;
+    const nextIsActive = input.isActive ?? target.is_active;
+    await validatePoolAllocation({
+      id: input.userId,
+      role: nextRole,
+      is_active: nextIsActive,
+      monthly_token_quota: nextQuota,
+    });
+
     const profileUpdate = {
       ...(input.displayName !== undefined ? { display_name: input.displayName } : {}),
-      ...(input.monthlyTokenQuota !== undefined ? { monthly_token_quota: input.monthlyTokenQuota } : {}),
-      ...(input.role !== undefined ? { role: input.role } : {}),
-      ...(input.isActive !== undefined ? { is_active: input.isActive } : {}),
     };
     if (Object.keys(profileUpdate).length) {
       const { error } = await admin.from("profiles").update(profileUpdate).eq("id", input.userId);
       if (error) throw error;
     }
+    await setProfileAllocation(input.userId, nextQuota, nextRole, nextIsActive);
 
     if (input.accountIds) {
       const accounts = await listSocialAccounts();

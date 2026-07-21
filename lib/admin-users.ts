@@ -1,5 +1,31 @@
 export type ManagedRole = "admin" | "user";
 
+export type TokenAllocation = {
+  role: ManagedRole;
+  is_active: boolean;
+  monthly_token_quota: number;
+};
+
+export type TokenPoolSummary = {
+  total: number;
+  allocated: number;
+  unallocated: number;
+};
+
+export function summarizeTokenPool(total: number, users: TokenAllocation[]): TokenPoolSummary {
+  const allocated = users.reduce((sum, user) => (
+    user.role === "user" && user.is_active ? sum + user.monthly_token_quota : sum
+  ), 0);
+
+  if (allocated > total) {
+    throw new Error(
+      `User limits exceed the shared monthly pool by ${(allocated - total).toLocaleString()} tokens. Lower a user limit or increase the pool first.`,
+    );
+  }
+
+  return { total, allocated, unallocated: total - allocated };
+}
+
 type AdminMutation = {
   actorId: string;
   targetId: string;
