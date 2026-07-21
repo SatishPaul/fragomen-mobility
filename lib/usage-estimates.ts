@@ -50,4 +50,16 @@ export function estimateVoiceover(scenes: EstimateScene[]) {
   };
 }
 
+export function quotaComparisonText(
+  tokensForRun: number,
+  summary: { used: number; reserved: number; limit: number; remaining: number },
+): string {
+  const consumed = summary.used + summary.reserved;
+  const monthly = `Monthly quota: ${summary.remaining.toLocaleString()} tokens remaining from a ${summary.limit.toLocaleString()}-token limit; ${consumed.toLocaleString()} already used or reserved.`;
+  const shortfall = Math.max(0, tokensForRun - summary.remaining);
+  if (shortfall === 0) return monthly;
+
+  return `${monthly} This run needs about ${tokensForRun.toLocaleString()} tokens, so you are short by about ${shortfall.toLocaleString()}. Ask an administrator to raise the monthly limit before generating.`;
+}
+
 export const VIDEO_RENDER_QUOTA_TOKENS = 0;

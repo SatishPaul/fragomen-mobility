@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { quotaComparisonText } from "@/lib/usage-estimates";
 
 type QuotaSummary = {
   used: number;
@@ -48,8 +49,8 @@ export function QuotaEstimate({
 
   const insufficient = summary !== null && tokens > summary.remaining;
   const tokenLabel = tokens === 0
-    ? "0 monthly AI tokens"
-    : `${approximate ? "About " : ""}${tokens.toLocaleString()} monthly AI tokens`;
+    ? "This step uses 0 quota tokens"
+    : `${approximate ? "About " : ""}${tokens.toLocaleString()} tokens for this run`;
 
   return (
     <div
@@ -68,9 +69,7 @@ export function QuotaEstimate({
       {breakdown && <p className="mt-1 text-xs text-muted">{breakdown}</p>}
       {summary && (
         <p className={`mt-1 text-xs ${insufficient ? "text-amber-300" : "text-muted"}`}>
-          {summary.remaining.toLocaleString()} remaining of {summary.limit.toLocaleString()} this
-          month ({(summary.used + summary.reserved).toLocaleString()} used or reserved).
-          {insufficient && " Ask an administrator to raise the limit before generating."}
+          {quotaComparisonText(tokens, summary)}
         </p>
       )}
     </div>

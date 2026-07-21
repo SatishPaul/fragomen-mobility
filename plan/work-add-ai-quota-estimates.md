@@ -1,7 +1,7 @@
 ---
 title: Add AI Quota Estimates Before Generation
 description: Show estimated narration, voiceover, and video-generation quota usage before each action
-status: completed
+status: in-progress
 last_updated: 2026-07-21
 ---
 
@@ -25,6 +25,7 @@ Show users how much monthly AI quota each generation step is expected to require
 * Show video rendering as zero monthly AI tokens because FFmpeg rendering runs locally in the browser.
 * Keep zero-token estimates visible and explain that local processing can still take time.
 * Warn when narration's estimate exceeds remaining quota without silently changing the administrator-set limit.
+* Label generation cost as tokens for this run and reserve monthly quota language for the account limit and remaining balance.
 
 ## Progress
 
@@ -35,6 +36,10 @@ Added visible estimates before narration, voiceover, and rendering. Zero-token e
 Added `/api/usage/summary` to return only the signed-in user's monthly used, reserved, limit, and remaining totals. Narration displays a conservative visual-analysis and script-writing breakdown against that remaining quota. Voiceover displays zero monthly tokens plus character and approximate speech-length estimates. Browser rendering displays zero monthly tokens plus an explicit wait-time explanation.
 
 Updated the walkthrough to version 1.4 and regenerated the PDF.
+
+Reopened the task after user testing showed the original wording could be read as two conflicting monthly totals. The estimate now distinguishes this run's expected token cost from the monthly quota and displays the estimated shortfall when the run cannot fit. Added formatter tests using the reported values: 4,424 tokens needed, 1,438 remaining, and a 2,986-token shortfall.
+
+Updated the walkthrough to version 1.5 with matching per-run and monthly-quota terminology.
 
 ## Validation
 
@@ -48,9 +53,14 @@ Updated the walkthrough to version 1.4 and regenerated the PDF.
 * Commit `0c3d224` was pushed to `main`.
 * Vercel deployment `dpl_3rd7bk7KFY5BVHgYi2wi3jNYrTiF` is Ready and aliased to `https://fragomen-mobility.vercel.app`.
 * The production login route returns `200`, and the signed-out `/api/usage/summary` request is protected with `401`.
+* Focused estimate and wording tests: 5 passed, including the reported 4,424 / 1,438 / 2,986 example.
+* Full Vitest suite after the wording change: 9 files and 50 tests passed.
+* Production Next.js build after the wording change completed successfully with only the pre-existing warnings.
+* PyMuPDF confirms the version 1.5 walkthrough has exactly 7 pages and contains the required per-run, monthly-quota, and shortfall terminology.
+* Raster inspection of page 4 confirms the clarified walkthrough content is legible and unclipped.
 
 ## Resume Context
 
-Current checkpoint: Quota estimates and the synchronized version 1.4 walkthrough are deployed and validated in production.
+Current checkpoint: The clearer per-run versus monthly-quota wording, tests, build, and version 1.5 walkthrough are complete; deployment remains.
 
-Next action: Sign in and open Create to confirm the narration estimate reflects the uploaded assets and current account quota.
+Next action: Commit and push the clarification, deploy it to Vercel production, and validate the canonical routes.
