@@ -1,7 +1,7 @@
 ---
 title: Improve Administrator User Management
 description: Add existing-user recovery, role selection, guarded deletion, and clearer quota and social-account controls
-status: in-progress
+status: completed
 last_updated: 2026-07-21
 ---
 
@@ -18,7 +18,7 @@ Make administrator user management complete and understandable, including typo r
 * [x] Add guarded deletion for mistyped users
 * [x] Clarify quota units and social-account authorization in the UI
 * [x] Add focused tests and run the production build
-* [ ] Deploy and validate the production workflow
+* [x] Deploy and validate the production workflow
 
 ## Decisions
 
@@ -45,9 +45,11 @@ Changed `app/api/admin/users/route.ts`, `components/AdminUsers.tsx`, `lib/admin-
 * Full Vitest suite: 7 files and 42 tests passed.
 * Production Next.js build completed successfully with only pre-existing warnings.
 * `git diff --check` reports no whitespace errors.
+* Commit `a89bf0d` is deployed and aliased to `https://fragomen-mobility.vercel.app`.
+* An unauthenticated production check confirms `/admin` remains protected and redirects to `/login?next=%2Fadmin`.
 
 ## Resume Context
 
-Current checkpoint: The implementation and all local validation are complete.
+Current checkpoint: The administrator-management improvements are deployed and validated.
 
-Next action: Commit the five changed files, deploy to Vercel production, and verify the Admin page presents role and guarded delete controls.
+Next action: Refresh the authenticated Admin page. Use Delete on JC and confirm the warning only when permanent removal is intended.
