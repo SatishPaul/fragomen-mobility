@@ -147,7 +147,7 @@
       Complete the core walkthrough through Render and Download. Only run the optional publishing section when a real social account has been intentionally assigned and the named destination is approved.
     </div>
 
-    <div class="cover-meta">Version 1.0 | 21 July 2026 | Desktop Chrome recommended</div>
+    <div class="cover-meta">Version 1.1 | 21 July 2026 | Desktop Chrome recommended</div>
   </section>
 
   <section class="page">
@@ -173,8 +173,8 @@
     </div>
 
     <h3>First-time administrator activation</h3>
-    <div class="step"><div class="step-number">1</div><div><h4>Open the invitation</h4><p>Use the Supabase invitation sent to <strong>forweekend@gmail.com</strong>. Check spam or junk if it is not in the inbox.</p></div></div>
-    <div class="step"><div class="step-number">2</div><div><h4>Choose a password</h4><p>Follow the invitation link and set a password of at least eight characters.</p><div class="expected">Expected: the app redirects to the dashboard after the password is set.</div></div></div>
+    <div class="step"><div class="step-number">1</div><div><h4>Open only the newest email</h4><p>Use the latest invitation or password-reset email sent to <strong>forweekend@gmail.com</strong>. Older links expire when a newer email is requested; check spam or junk if needed.</p></div></div>
+    <div class="step"><div class="step-number">2</div><div><h4>Verify the production domain and choose a password</h4><p>The link must open <code>https://fragomen-mobility.vercel.app</code>. The app securely completes the link even when Supabase initially opens the home page. Set a password of at least eight characters.</p><div class="expected">Expected: the reset-password screen appears, then the app redirects to Dashboard after the password is saved.</div></div></div>
     <div class="step"><div class="step-number">3</div><div><h4>Sign in</h4><p>At <code>/login</code>, enter the invited email and new password.</p><div class="expected">Expected: Dashboard, Admin, Profile, and Sign out controls appear in the header.</div></div></div>
 
     <h3>Prepare demo media</h3>
@@ -193,7 +193,7 @@
     <p>Run this section while signed in as <strong>forweekend@gmail.com</strong>. The shield icon in the header opens Administration.</p>
 
     <div class="step"><div class="step-number">1</div><div><h4>Open Administration</h4><p>Select the shield icon or open <code>/admin</code>.</p><div class="expected">Expected: "Users and access" appears with Invite a user and Users sections.</div></div></div>
-    <div class="step"><div class="step-number">2</div><div><h4>Invite a test user</h4><p>Enter a test email, display name, and monthly token quota. Select <strong>Invite</strong>.</p><div class="expected">Expected: "Invitation sent" appears and the user is listed.</div></div></div>
+    <div class="step"><div class="step-number">2</div><div><h4>Invite a test user</h4><p>Enter a test email, display name, and monthly token quota. Select <strong>Invite</strong>, then have the user open only the newest email on the production domain.</p><div class="expected">Expected: "Invitation sent" appears and the user is listed.</div></div></div>
     <div class="step"><div class="step-number">3</div><div><h4>Adjust access</h4><p>Change the user's quota or Active checkbox, then select the Save button.</p><div class="expected">Expected: the status confirms the user was updated.</div></div></div>
     <div class="step"><div class="step-number">4</div><div><h4>Assign social accounts only when needed</h4><p>If Outstand accounts are connected, select only the accounts this user may publish to, then save.</p></div></div>
 
@@ -272,7 +272,8 @@
       <li>Confirm that opening <code>/dashboard</code> redirects to Login.</li>
       <li>On Login, select <strong>Forgot password?</strong>.</li>
       <li>Enter the account email and select <strong>Send reset link</strong>.</li>
-      <li>For a non-disruptive demo, stop after confirming the reset email arrives. Do not change the password unless that is the intended test.</li>
+      <li>Confirm the newest email opens the production domain. An expired link returns to Login with guidance to request a new email.</li>
+      <li>For a non-disruptive demo, stop after confirming the email arrives. Do not change the password unless that is the intended test.</li>
     </ol>
 
     <div class="callout">
@@ -318,7 +319,7 @@
     <div class="section-head"><div><div class="kicker">Sign-off</div><h2>Acceptance checklist</h2></div><div class="section-no">06</div></div>
 
     <div class="grid-2">
-      <div class="card avoid-break"><div class="eyebrow">Access</div><ul class="checklist"><li>Invitation link works.</li><li>Login reaches Dashboard.</li><li>Protected pages redirect when signed out.</li><li>Admin can invite and update users.</li><li>Regular users cannot open Admin.</li></ul></div>
+      <div class="card avoid-break"><div class="eyebrow">Access</div><ul class="checklist"><li>Newest invitation or reset link works.</li><li>Login reaches Dashboard.</li><li>Protected pages redirect when signed out.</li><li>Admin can invite and update users.</li><li>Regular users cannot open Admin.</li></ul></div>
       <div class="card avoid-break"><div class="eyebrow">Creation</div><ul class="checklist"><li>Media uploads and reorders.</li><li>Format and style apply.</li><li>AI script is generated and editable.</li><li>Voiceover completes.</li><li>MP4 renders and downloads.</li></ul></div>
       <div class="card avoid-break"><div class="eyebrow">Data</div><ul class="checklist"><li>Completed video appears in history.</li><li>Dashboard download works.</li><li>Usage and quota update.</li><li>Profile name saves.</li><li>Logout ends the session.</li></ul></div>
       <div class="card avoid-break"><div class="eyebrow">Optional publishing</div><ul class="checklist"><li>Only assigned accounts appear.</li><li>Final confirmation names destinations.</li><li>Status resumes without duplication.</li><li>Native post links work.</li><li>Analytics refresh is manual.</li></ul></div>
@@ -328,7 +329,8 @@
     <table>
       <tr><th>Symptom</th><th>Action</th></tr>
       <tr><td>The browser shows <code>/gate</code></td><td>Open <code>https://fragomen-mobility.vercel.app/login</code> directly.</td></tr>
-      <tr><td>Invitation or reset link fails</td><td>Confirm the link is the newest email and opens the production domain.</td></tr>
+      <tr><td>Invitation or reset link fails</td><td>Discard older emails, request one new link, and confirm it opens <code>fragomen-mobility.vercel.app</code>, never localhost.</td></tr>
+      <tr><td>Login reports an expired link</td><td>Open Forgot password, send one new email, and use only that newest message.</td></tr>
       <tr><td>AI request is rate limited</td><td>Wait one minute and retry; free model capacity can fluctuate.</td></tr>
       <tr><td>Voice model is slow on first use</td><td>Keep the tab open while the one-time browser model download completes.</td></tr>
       <tr><td>Render is slow</td><td>Use desktop Chrome, fewer assets, and a shorter 720p output.</td></tr>
