@@ -3,7 +3,7 @@ import { createSocialConnectionToken, readSocialConnectionToken } from "./social
 
 describe("social connection tokens", () => {
   const now = Date.UTC(2026, 6, 21);
-  const snapshot = { userId: "user-1", network: "linkedin" as const, existingAccountIds: ["account-1"] };
+  const snapshot = { userId: "user-1", network: "linkedin" as const };
 
   it("round trips a signed connection snapshot", () => {
     expect(readSocialConnectionToken(createSocialConnectionToken(snapshot, "secret", now), "secret", now)).toMatchObject(snapshot);

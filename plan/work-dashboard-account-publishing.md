@@ -2,7 +2,7 @@
 title: Improve Dashboard Account and Publishing Workflows
 description: Clarify account navigation, persist social connections, support multi-site publishing, and preview recent videos
 status: in-progress
-last_updated: 2026-07-21
+last_updated: 2026-07-22
 ---
 
 ## Goal
@@ -23,6 +23,8 @@ Make routine account and publishing tasks clear from the dashboard. Users must b
 * [x] Persist newly connected social accounts to the connecting user
 * [x] Revalidate and redeploy the playback and connection fixes
 * [x] Add a permanent regression and security test playbook
+* [x] Bind Outstand OAuth to the current user and persist the callback account
+* [ ] Validate and deploy LinkedIn reconnect behavior
 
 ## Decisions
 
@@ -34,6 +36,8 @@ Make routine account and publishing tasks clear from the dashboard. Users must b
 * Use an authenticated same-origin stream with ownership filtering and byte-range forwarding so COEP remains enabled.
 * Upload the durable private Supabase copy to Outstand instead of relying on an in-memory render blob.
 * Keep dependency auditing separate from functional regression so unresolved advisories remain visible.
+* Pass the signed-in user ID as Outstand's `tenant_id` and accept callback accounts only from that tenant.
+* Reconnect an account idempotently when it is already assigned to the same user; reject assignments owned by another user.
 
 ## Progress
 
@@ -84,9 +88,18 @@ Updated the production walkthrough to version 1.8 for authenticated same-origin 
 * Production metadata confirms `OUTSTAND_API_KEY` is encrypted for Production and Preview. Vercel does not reveal its sensitive value through environment pull.
 * The scoped Supabase query confirmed JC (`spiritdoctorjc@gmail.com`) is an active regular user. The temporary production environment file was deleted immediately after verification.
 * The browser has no authenticated administrator session, so the pre-existing LinkedIn account could not be assigned or tested as JC without bypassing normal authentication. No assignment was attempted.
+* Focused OAuth completion and token tests pass 11 tests across 2 files.
+* `npm run test:regression` passes 13 test files and 81 tests, followed by the optimized production build.
+* VS Code reports no errors in the changed completion route, callback page, or Outstand client.
+* Walkthrough version 1.9 was regenerated with Python Playwright and Edge. Direct PDF validation confirms seven nonblank pages and all required reconnect and multi-profile text.
+* Visual inspection of walkthrough pages 6 and 7 at print width confirms complete text, stable layout, and visible footers.
+
+Production screenshots on 22 July show the user signed into LinkedIn in the same browser while VideoMaker still reports no connected account. Browser origin isolation prevents VideoMaker from reading LinkedIn cookies directly. Outstand returns the successful OAuth account as `account_id`, but the current callback discards it and completion accepts only IDs absent before OAuth. This rejects a reused LinkedIn connection.
+
+Implemented tenant-bound OAuth with the current user ID, exact callback account verification, idempotent same-user assignment reactivation, and cross-user collision rejection. Added Outstand pending-session support so a single profile finalizes automatically and multiple LinkedIn profiles or organization pages require explicit selection.
 
 ## Resume Context
 
-Current checkpoint: Same-origin playback, durable Outstand upload, generic post-OAuth assignment, and the permanent regression/security gate are deployed and pass 77 tests, a production build, and all signed-out smoke checks.
+Current checkpoint: Tenant-bound callback assignment and pending LinkedIn profile selection are implemented and pass the full 81-test regression gate and production build. Walkthrough version 1.9 is validated.
 
-Next action: Sign in normally as an administrator, assign `Satish Paul · linkedin` to JC in Administration, save, then sign in as JC and run the authenticated playback, connected-account, and approved publishing checks from `test.md`.
+Next action: Check the final diff, commit and push the implementation, deploy to Vercel production, then run signed-out production smoke checks.

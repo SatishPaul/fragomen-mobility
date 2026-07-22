@@ -86,3 +86,17 @@ export interface OutstandPostAnalytics {
     average_engagement_rate?: number;
   };
 }
+
+export interface OutstandPendingPage {
+  id: string;
+  type: string;
+  name: string;
+  username: string;
+  profilePictureUrl?: string | null;
+}
+
+export interface OutstandPendingConnection {
+  network: SocialNetwork;
+  expiresAt: number;
+  availablePages: OutstandPendingPage[];
+}

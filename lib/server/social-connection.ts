@@ -6,7 +6,6 @@ export const socialConnectionCookie = "vm_social_connect";
 export interface SocialConnectionSnapshot {
   userId: string;
   network: SocialNetwork;
-  existingAccountIds: string[];
   expiresAt: number;
 }
 
@@ -36,8 +35,7 @@ export function readSocialConnectionToken(
   if (expected.length !== provided.length || !timingSafeEqual(expected, provided)) return null;
   try {
     const snapshot = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as SocialConnectionSnapshot;
-    if (!snapshot.userId || !snapshot.network || !Array.isArray(snapshot.existingAccountIds) || snapshot.expiresAt < now) return null;
-    if (!snapshot.existingAccountIds.every((id) => typeof id === "string")) return null;
+    if (!snapshot.userId || !snapshot.network || snapshot.expiresAt < now) return null;
     return snapshot;
   } catch {
     return null;

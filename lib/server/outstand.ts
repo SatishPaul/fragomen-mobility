@@ -4,6 +4,7 @@ import type {
   OutstandAccountHealth,
   OutstandCreatePostRequest,
   OutstandMedia,
+  OutstandPendingConnection,
   OutstandPost,
   OutstandPostAnalytics,
   OutstandSocialAccount,
@@ -62,9 +63,11 @@ async function outstandRequest<T>(path: string, init?: RequestInit): Promise<T> 
   return payload as T;
 }
 
-export async function listSocialAccounts(): Promise<OutstandSocialAccount[]> {
+export async function listSocialAccounts(tenantId?: string): Promise<OutstandSocialAccount[]> {
+  const parameters = new URLSearchParams({ limit: "100", offset: "0", includeTokens: "false" });
+  if (tenantId) parameters.set("tenantId", tenantId);
   const response = await outstandRequest<{ data: OutstandSocialAccount[] }>(
-    "/social-accounts?limit=100&offset=0&includeTokens=false",
+    `/social-accounts?${parameters}`,
   );
   if (!Array.isArray(response.data)) throw new OutstandError("Outstand returned invalid accounts.");
   return response.data;
@@ -77,10 +80,16 @@ export async function getAccountHealth(id: string): Promise<OutstandAccountHealt
   return response.data;
 }
 
-export async function getAuthenticationUrl(network: string, redirectUri: string): Promise<string> {
+export async function getAuthenticationUrl(network: string, redirectUri: string, tenantId?: string): Promise<string> {
   const response = await outstandRequest<{ data: { auth_url: string } }>(
     `/social-networks/${encodeURIComponent(network)}/auth-url`,
-    { method: "POST", body: JSON.stringify({ redirect_uri: redirectUri }) },
+    {
+      method: "POST",
+      body: JSON.stringify({
+        redirect_uri: redirectUri,
+        ...(tenantId ? { tenant_id: tenantId } : {}),
+      }),
+    },
   );
   if (typeof response.data?.auth_url !== "string") {
     throw new OutstandError("Outstand returned an invalid connection URL.");
@@ -137,4 +146,47 @@ export async function getPostAnalytics(id: string): Promise<OutstandPostAnalytic
     throw new OutstandError("Outstand returned invalid post analytics.");
   }
   return response;
+}
+
+async function outstandSessionRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${baseUrl}${path}`, {
+    ...init,
+    headers: {
+      Accept: "application/json",
+      ...(init?.body ? { "Content-Type": "application/json" } : {}),
+    },
+    cache: "no-store",
+    signal: AbortSignal.timeout(requestTimeoutMs),
+  }).catch(() => {
+    throw new OutstandError("Unable to reach Outstand.");
+  });
+  const payload: unknown = await response.json().catch(() => null);
+  if (!response.ok || !record(payload)?.success) {
+    throw new OutstandError("Outstand could not complete the pending connection.", response.status >= 500 ? 502 : response.status);
+  }
+  return payload as T;
+}
+
+export async function getPendingConnection(sessionToken: string): Promise<OutstandPendingConnection> {
+  const response = await outstandSessionRequest<{ data: OutstandPendingConnection }>(
+    `/social-accounts/pending/${encodeURIComponent(sessionToken)}`,
+  );
+  if (!response.data || !Array.isArray(response.data.availablePages)) {
+    throw new OutstandError("Outstand returned an invalid pending connection.");
+  }
+  return response.data;
+}
+
+export async function finalizePendingConnection(
+  sessionToken: string,
+  selectedPageIds: string[],
+): Promise<OutstandSocialAccount[]> {
+  const response = await outstandSessionRequest<{ connectedAccounts: OutstandSocialAccount[] }>(
+    `/social-accounts/pending/${encodeURIComponent(sessionToken)}/finalize`,
+    { method: "POST", body: JSON.stringify({ selectedPageIds }) },
+  );
+  if (!Array.isArray(response.connectedAccounts) || response.connectedAccounts.length === 0) {
+    throw new OutstandError("Outstand did not return a connected account.");
+  }
+  return response.connectedAccounts;
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { socialPlatforms, type SocialNetwork } from "@/config/social-platforms";
-import { getAuthenticationUrl, listSocialAccounts } from "@/lib/server/outstand";
+import { getAuthenticationUrl } from "@/lib/server/outstand";
 import { requirePublishingSession, requireSameOrigin } from "@/lib/server/publishing-auth";
 import { publishingError } from "@/lib/server/publishing-route";
 import { createSocialConnectionToken, socialConnectionCookie } from "@/lib/server/social-connection";
@@ -21,15 +21,13 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     const callbackUrl = new URL("/create/publish/callback", request.url).href;
-    const response = NextResponse.json({ url: await getAuthenticationUrl(network, callbackUrl) });
+    const response = NextResponse.json({ url: await getAuthenticationUrl(network, callbackUrl, session?.userId) });
     if (session?.userId) {
       const secret = process.env.OUTSTAND_API_KEY?.trim();
       if (!secret) throw new Error("Social publishing is not configured.");
-      const accounts = await listSocialAccounts();
       response.cookies.set(socialConnectionCookie, createSocialConnectionToken({
         userId: session.userId,
         network,
-        existingAccountIds: accounts.map((account) => account.id),
       }, secret), {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",

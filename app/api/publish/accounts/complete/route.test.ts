@@ -4,7 +4,11 @@ const publishingAuth = vi.hoisted(() => ({
   requirePublishingSession: vi.fn(),
   requireSameOrigin: vi.fn(),
 }));
-const outstand = vi.hoisted(() => ({ listSocialAccounts: vi.fn() }));
+const outstand = vi.hoisted(() => ({
+  finalizePendingConnection: vi.fn(),
+  getPendingConnection: vi.fn(),
+  listSocialAccounts: vi.fn(),
+}));
 const socialConnection = vi.hoisted(() => ({ readSocialConnectionToken: vi.fn() }));
 const supabase = vi.hoisted(() => ({ createAdminClient: vi.fn() }));
 
@@ -26,27 +30,31 @@ vi.mock("@/lib/supabase/admin", () => supabase);
 
 import { POST } from "./route";
 
-function request(origin = "https://app.example"): Request {
+function request(body: Record<string, string | null> = {
+  success: "true",
+  accountId: "new_1",
+  username: "new-user",
+}, origin = "https://app.example"): Request {
   return new Request("https://app.example/api/publish/accounts/complete", {
     method: "POST",
-    headers: { origin },
+    headers: { origin, "content-type": "application/json" },
+    body: JSON.stringify(body),
   });
 }
 
-function adminClient(existingIds: string[] = []) {
-  const assignmentLookup = {
-    select: vi.fn(),
-    in: vi.fn().mockResolvedValue({
-      data: existingIds.map((outstand_account_id) => ({ outstand_account_id })),
-      error: null,
-    }),
-  };
-  assignmentLookup.select.mockReturnValue(assignmentLookup);
-  const insert = vi.fn().mockResolvedValue({ error: null });
-  supabase.createAdminClient.mockReturnValue({
-    from: vi.fn().mockReturnValue({ ...assignmentLookup, insert }),
+function adminClient(existingUserId?: string) {
+  const lookupEq = vi.fn().mockResolvedValue({
+    data: existingUserId ? [{ user_id: existingUserId, outstand_account_id: "new_1" }] : [],
+    error: null,
   });
-  return { insert };
+  const select = vi.fn().mockReturnValue({ eq: lookupEq });
+  const insert = vi.fn().mockResolvedValue({ error: null });
+  const updateEq = vi.fn().mockResolvedValue({ error: null });
+  const update = vi.fn().mockReturnValue({ eq: updateEq });
+  supabase.createAdminClient.mockReturnValue({
+    from: vi.fn().mockReturnValue({ select, insert, update }),
+  });
+  return { insert, lookupEq, update, updateEq };
 }
 
 describe("social account completion route", () => {
@@ -57,7 +65,6 @@ describe("social account completion route", () => {
     socialConnection.readSocialConnectionToken.mockReset().mockReturnValue({
       userId: "user_1",
       network: "linkedin",
-      existingAccountIds: ["old_1"],
       expiresAt: Date.now() + 60_000,
     });
     outstand.listSocialAccounts.mockReset().mockResolvedValue([
@@ -72,6 +79,8 @@ describe("social account completion route", () => {
       },
       { id: "new_2", network: "instagram", nickname: "Other network", username: "other", isActive: true },
     ]);
+    outstand.getPendingConnection.mockReset();
+    outstand.finalizePendingConnection.mockReset();
     supabase.createAdminClient.mockReset();
   });
 
@@ -89,7 +98,6 @@ describe("social account completion route", () => {
     socialConnection.readSocialConnectionToken.mockReturnValue({
       userId: "user_2",
       network: "linkedin",
-      existingAccountIds: [],
       expiresAt: Date.now() + 60_000,
     });
 
@@ -100,30 +108,39 @@ describe("social account completion route", () => {
     expect(supabase.createAdminClient).not.toHaveBeenCalled();
   });
 
-  it("rejects completion when no new account exists for the requested network", async () => {
-    outstand.listSocialAccounts.mockResolvedValue([
-      { id: "old_1", network: "linkedin", nickname: "Old", username: "old", isActive: true },
-      { id: "new_2", network: "instagram", nickname: "Other network", username: "other", isActive: true },
-    ]);
+  it("rejects a callback without Outstand success and account proof", async () => {
+    const response = await POST(request({ success: "false", accountId: null, username: null }));
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: "Outstand did not confirm the social account connection. Connect the account again.",
+    });
+    expect(outstand.listSocialAccounts).not.toHaveBeenCalled();
+  });
+
+  it("rejects an account that Outstand cannot verify for the user tenant", async () => {
+    outstand.listSocialAccounts.mockResolvedValue([]);
 
     const response = await POST(request());
 
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: "No new social account was detected. Reconnect the account and try again." });
+    expect(await response.json()).toEqual({ error: "Outstand could not verify this account for the signed-in user." });
+    expect(outstand.listSocialAccounts).toHaveBeenCalledWith("user_1");
     expect(supabase.createAdminClient).not.toHaveBeenCalled();
   });
 
   it("rejects an account already assigned to another user", async () => {
-    const { insert } = adminClient(["new_1"]);
+    const { insert, update } = adminClient("user_2");
 
     const response = await POST(request());
 
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ error: "The connected social account is already assigned to another user." });
     expect(insert).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
   });
 
-  it("assigns only the newly connected account for the selected network", async () => {
+  it("assigns the exact callback account for the selected network", async () => {
     const { insert } = adminClient();
 
     const response = await POST(request());
@@ -143,5 +160,69 @@ describe("social account completion route", () => {
     }]);
     expect(response.headers.get("set-cookie")).toContain("vm_social_connect=");
     expect(response.headers.get("set-cookie")).toContain("Max-Age=0");
+  });
+
+  it("reactivates a reused account already assigned to the same user", async () => {
+    const { insert, update, updateEq } = adminClient("user_1");
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(200);
+    expect(insert).not.toHaveBeenCalled();
+    expect(update).toHaveBeenCalledWith({
+      user_id: "user_1",
+      outstand_account_id: "new_1",
+      platform: "linkedin",
+      account_name: "New account",
+      account_metadata: { username: "new-user", profilePictureUrl: "https://images.example/new.png" },
+      is_active: true,
+      assigned_by: "user_1",
+    });
+    expect(updateEq).toHaveBeenCalledWith("outstand_account_id", "new_1");
+  });
+
+  it("returns pending choices without consuming a multi-profile connection", async () => {
+    outstand.getPendingConnection.mockResolvedValue({
+      network: "linkedin",
+      expiresAt: Date.now() + 60_000,
+      availablePages: [
+        { id: "personal", type: "personal", name: "JC", username: "jc" },
+        { id: "company", type: "organization", name: "Company", username: "company" },
+      ],
+    });
+
+    const response = await POST(request({ pendingSession: "pending-token" }));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ pending: { pages: [
+      { id: "personal", type: "personal", name: "JC", username: "jc" },
+      { id: "company", type: "organization", name: "Company", username: "company" },
+    ] } });
+    expect(outstand.finalizePendingConnection).not.toHaveBeenCalled();
+    expect(supabase.createAdminClient).not.toHaveBeenCalled();
+    expect(response.headers.get("set-cookie")).toBeNull();
+  });
+
+  it("automatically finalizes and assigns a single pending profile", async () => {
+    outstand.getPendingConnection.mockResolvedValue({
+      network: "linkedin",
+      expiresAt: Date.now() + 60_000,
+      availablePages: [{ id: "personal", type: "personal", name: "JC", username: "new-user" }],
+    });
+    outstand.finalizePendingConnection.mockResolvedValue([{
+      id: "new_1",
+      network: "linkedin",
+      nickname: "New account",
+      username: "new-user",
+      isActive: true,
+    }]);
+    const { insert } = adminClient();
+
+    const response = await POST(request({ pendingSession: "pending-token" }));
+
+    expect(response.status).toBe(200);
+    expect(outstand.finalizePendingConnection).toHaveBeenCalledWith("pending-token", ["personal"]);
+    expect(outstand.listSocialAccounts).toHaveBeenCalledWith("user_1");
+    expect(insert).toHaveBeenCalledOnce();
   });
 });

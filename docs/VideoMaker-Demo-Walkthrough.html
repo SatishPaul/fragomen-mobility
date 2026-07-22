@@ -154,7 +154,7 @@
       Complete the core walkthrough through Render and Download. Only run the optional publishing section when a real social account has been intentionally assigned and the named destination is approved.
     </div>
 
-    <div class="cover-meta">Version 1.8 | 21 July 2026 | Desktop Chrome recommended</div>
+    <div class="cover-meta">Version 1.9 | 22 July 2026 | Desktop Chrome recommended</div>
   </section>
 
   <section class="page">
@@ -307,14 +307,14 @@
     <h3>Prerequisites</h3>
     <ul class="checklist">
       <li>Outstand is configured and the intended social account is connected.</li>
-      <li>An administrator assigned that exact account to the signed-in user.</li>
+      <li>The signed-in user completed provider consent in VideoMaker, or an administrator assigned that exact account.</li>
       <li>The finished video was reviewed and approved.</li>
       <li>The caption is final; YouTube and Vimeo also require a title.</li>
       <li>The account owner approves a real immediate post. Scheduling is not available.</li>
     </ul>
 
     <h3>Publish only after approval</h3>
-    <div class="step"><div class="step-number">1</div><div><h4>Load connected accounts</h4><p>Confirm every assigned provider, account name, and health state on Dashboard, then refresh in Step 6 if needed. When an administrator completes provider consent, only the new account created by that OAuth session is assigned to the initiating user.</p></div></div>
+    <div class="step"><div class="step-number">1</div><div><h4>Connect and load accounts</h4><p>Being signed into LinkedIn helps provider consent but does not connect VideoMaker by itself. Start Connect in VideoMaker. If LinkedIn offers several profiles or organization pages, select only approved entries. The exact callback account is assigned to the signed-in user, including a securely verified reconnect.</p></div></div>
     <div class="step"><div class="step-number">2</div><div><h4>Select approved destinations</h4><p>Choose accounts individually, use <strong>Select recommended</strong> for destinations suited to the rendered aspect ratio, or use <strong>Select all supported</strong>. Verify every platform and account name; clear any destination that is not approved.</p></div></div>
     <div class="step"><div class="step-number">3</div><div><h4>Enter post content</h4><p>Add the caption and, where required, the title. Keep combined content under 5,000 characters.</p></div></div>
     <div class="step"><div class="step-number">4</div><div><h4>Review and publish</h4><p>Select the publish action. Read the confirmation dialog, verify every named account, and confirm only when approved.</p><div class="expected">Expected: the authenticated durable MP4 is read from private Supabase storage, uploaded to Outstand, and followed by per-account status.</div></div></div>
@@ -335,7 +335,7 @@
       <div class="card avoid-break"><div class="eyebrow">Access</div><ul class="checklist"><li>Newest invitation or reset link works.</li><li>Login reaches Dashboard.</li><li>Shared pool arithmetic updates live.</li><li>Delete requires confirmation.</li><li>Regular users cannot open Admin.</li></ul></div>
       <div class="card avoid-break"><div class="eyebrow">Creation</div><ul class="checklist"><li>Media uploads and reorders.</li><li>Quota estimates appear before generation.</li><li>AI script is generated and editable.</li><li>Voiceover completes.</li><li>MP4 renders and downloads.</li></ul></div>
       <div class="card avoid-break"><div class="eyebrow">Data</div><ul class="checklist"><li>Completed video plays inline.</li><li>Dashboard download works.</li><li>Usage and quota update.</li><li>Profile name saves.</li><li>Password reset is available from Account.</li></ul></div>
-      <div class="card avoid-break"><div class="eyebrow">Optional publishing</div><ul class="checklist"><li>Connected accounts survive refresh.</li><li>Recommended multi-select matches format.</li><li>Final confirmation names destinations.</li><li>Status resumes without duplication.</li><li>Analytics refresh is manual.</li></ul></div>
+      <div class="card avoid-break"><div class="eyebrow">Optional publishing</div><ul class="checklist"><li>Connected accounts survive refresh.</li><li>Reconnect creates no duplicate.</li><li>Final confirmation names destinations.</li><li>Status resumes without duplication.</li><li>Analytics refresh is manual.</li></ul></div>
     </div>
 
     <h3>Troubleshooting during the demo</h3>
