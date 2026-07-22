@@ -1,7 +1,7 @@
 ---
 title: Improve Dashboard Account and Publishing Workflows
 description: Clarify account navigation, persist social connections, support multi-site publishing, and preview recent videos
-status: in-progress
+status: completed
 last_updated: 2026-07-21
 ---
 
@@ -18,7 +18,7 @@ Make routine account and publishing tasks clear from the dashboard. Users must b
 * [x] Add video-format-aware multi-account publishing controls
 * [x] Add focused tests and run the full validation suite
 * [x] Update and regenerate the production walkthrough
-* [ ] Deploy and validate production
+* [x] Deploy and validate production
 
 ## Decisions
 
@@ -42,6 +42,8 @@ Recent videos now use private signed URLs for inline playback and explicit downl
 
 Updated the production walkthrough to version 1.7 and regenerated the seven-page PDF.
 
+Deployed feature commit `ce1575b` through Vercel deployment `dpl_EFneGsAEcD7fAVEXMQxtY5CTVU7L`. The deployment is Ready at the canonical production alias.
+
 ## Validation
 
 * Focused publishing helper suite: 5 tests passed.
@@ -50,9 +52,13 @@ Updated the production walkthrough to version 1.7 and regenerated the seven-page
 * VS Code reports no errors in the changed TypeScript and TSX files.
 * The version 1.7 walkthrough PDF has exactly 7 pages and contains the required navigation, connected-account, inline-playback, password-reset, and multi-select instructions.
 * Visual inspection confirms changed PDF pages 2, 3, 5, 6, and 7 are legible and unclipped.
+* Production `/login` returns HTTP 200. Signed-out `/api/publish/accounts` returns HTTP 401, and signed-out `/dashboard` redirects to `/login?next=%2Fdashboard`.
+* A short-lived authenticated production check returned HTTP 200 for the dashboard and connected-accounts API. LinkedIn account `Satish Paul` is visible, active, and healthy after refresh.
+* The authenticated dashboard contains the connected-account and recent-video sections. The administrator currently has no saved videos, so a live player could not be exercised in production; the inline player and download path passed type checking and the production build.
+* The temporary production verification session was revoked and temporary credentials were deleted.
 
 ## Resume Context
 
-Current checkpoint: Implementation, tests, build, and walkthrough synchronization are complete. Production deployment and verification remain.
+Current checkpoint: Implementation, tests, build, walkthrough synchronization, deployment, and production verification are complete.
 
-Next action: Review the final diff, commit and push the changes, deploy to Vercel, and validate the production dashboard and connected-account API.
+Next action: No action remains for this work item.
