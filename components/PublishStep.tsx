@@ -154,6 +154,11 @@ export function PublishStep() {
 
   async function publishVideo() {
     if (!output) return;
+    const savedVideoId = getLatestSavedVideoId();
+    if (!savedVideoId) {
+      setPublish({ error: "Wait for the finished video to be saved before publishing." });
+      return;
+    }
     const selected = publish.accounts.filter((account) => publish.selectedAccountIds.includes(account.id));
     if (selected.length === 0) {
       setPublish({ error: "Choose at least one connected account." });
@@ -184,16 +189,22 @@ export function PublishStep() {
     try {
       setOutcomes([]);
       setPublish({ status: "uploading", uploadProgress: 0, error: undefined });
+      const savedVideoResponse = await fetch(`/api/videos/${savedVideoId}`);
+      if (!savedVideoResponse.ok) {
+        const body = await savedVideoResponse.json().catch(() => null) as { error?: string } | null;
+        throw new Error(body?.error || "The saved video could not be loaded for publishing.");
+      }
+      const savedVideo = await savedVideoResponse.blob();
       const media = await api<{ id: string; uploadUrl: string }>("/api/publish/media", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filename: output.fileName }),
       });
-      await putVideo(media.uploadUrl, output.blob, (uploadProgress) => setPublish({ uploadProgress }));
+      await putVideo(media.uploadUrl, savedVideo, (uploadProgress) => setPublish({ uploadProgress }));
       await api("/api/publish/media/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: media.id, size: output.blob.size }),
+        body: JSON.stringify({ id: media.id, size: savedVideo.size }),
       });
       setConfirmedMediaId(media.id);
 

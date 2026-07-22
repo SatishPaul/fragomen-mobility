@@ -120,6 +120,13 @@
       th, td { padding: 5px 7px; }
       .checklist li { margin: 5px 0; }
       .small { font-size: 8.25pt; }
+      .signoff .card { padding: 7px 9px; }
+      .signoff .checklist li { margin: 3px 0; }
+      .signoff h3 { margin: 9px 0 4px; }
+      .signoff table { margin: 5px 0; }
+      .signoff th, .signoff td { padding: 3px 6px; }
+      .signoff .callout { margin: 6px 0; padding: 6px 10px; }
+      .signoff .small { font-size: 7.5pt; }
       a { color: var(--blue); }
       @page { size: Letter; margin: 0; }
     }
@@ -147,7 +154,7 @@
       Complete the core walkthrough through Render and Download. Only run the optional publishing section when a real social account has been intentionally assigned and the named destination is approved.
     </div>
 
-    <div class="cover-meta">Version 1.7 | 21 July 2026 | Desktop Chrome recommended</div>
+    <div class="cover-meta">Version 1.8 | 21 July 2026 | Desktop Chrome recommended</div>
   </section>
 
   <section class="page">
@@ -245,7 +252,7 @@
     <h3>What stays private</h3>
     <div class="grid-2">
       <div class="card"><div class="eyebrow">Browser only</div><h3>Source content</h3><p>Original photos, clips, draft state, render intermediates, and temporary upload URLs remain local to the browser workflow.</p></div>
-      <div class="card"><div class="eyebrow">Private Supabase storage</div><h3>Finished output</h3><p>The completed MP4 and its history record are user-owned. Dashboard playback and downloads use short-lived signed URLs.</p></div>
+      <div class="card"><div class="eyebrow">Private Supabase storage</div><h3>Finished output</h3><p>The completed MP4 and its history record are user-owned. Authenticated same-origin playback and downloads preserve privacy and browser seeking.</p></div>
     </div>
     <div class="footer-label">VideoMaker production walkthrough</div><div class="page-number">4</div>
   </section>
@@ -260,8 +267,8 @@
       <tr><td>Tokens this month</td><td>Usage reflects AI and voice operations performed during the demo.</td></tr>
       <tr><td>Quota remaining</td><td>A regular user sees the assigned limit. An administrator sees the shared balance left after active-user assignments.</td></tr>
       <tr><td>Saved videos</td><td>The count increased after the successful render.</td></tr>
-      <tr><td>Connected social accounts</td><td>LinkedIn and other available accounts remain visible after refresh with Ready or Reconnect status. Administrators see provider connections; regular users see assigned accounts.</td></tr>
-      <tr><td>Recent videos</td><td>The new video plays inline with browser controls and has an explicit Download action.</td></tr>
+      <tr><td>Connected social accounts</td><td>LinkedIn and every other assigned provider remain visible after refresh with account name and Ready or Reconnect status. Administrators see provider connections; regular users see assigned accounts.</td></tr>
+      <tr><td>Recent videos</td><td>The new private video loads through the authenticated app, plays inline with seeking controls, and has an explicit Download action.</td></tr>
       <tr><td>Publishing activity</td><td>Remains empty unless the optional publishing test was completed.</td></tr>
       <tr><td>Social views and likes</td><td>Remain zero until published analytics are refreshed.</td></tr>
     </table>
@@ -307,10 +314,10 @@
     </ul>
 
     <h3>Publish only after approval</h3>
-    <div class="step"><div class="step-number">1</div><div><h4>Load connected accounts</h4><p>Confirm account health on Dashboard, then refresh in Step 6 if needed. Administrators can connect an account from either location by completing provider consent in the OAuth popup.</p></div></div>
+    <div class="step"><div class="step-number">1</div><div><h4>Load connected accounts</h4><p>Confirm every assigned provider, account name, and health state on Dashboard, then refresh in Step 6 if needed. When an administrator completes provider consent, only the new account created by that OAuth session is assigned to the initiating user.</p></div></div>
     <div class="step"><div class="step-number">2</div><div><h4>Select approved destinations</h4><p>Choose accounts individually, use <strong>Select recommended</strong> for destinations suited to the rendered aspect ratio, or use <strong>Select all supported</strong>. Verify every platform and account name; clear any destination that is not approved.</p></div></div>
     <div class="step"><div class="step-number">3</div><div><h4>Enter post content</h4><p>Add the caption and, where required, the title. Keep combined content under 5,000 characters.</p></div></div>
-    <div class="step"><div class="step-number">4</div><div><h4>Review and publish</h4><p>Select the publish action. Read the confirmation dialog, verify every named account, and confirm only when approved.</p><div class="expected">Expected: the MP4 uploads directly to Outstand, then per-account status appears.</div></div></div>
+    <div class="step"><div class="step-number">4</div><div><h4>Review and publish</h4><p>Select the publish action. Read the confirmation dialog, verify every named account, and confirm only when approved.</p><div class="expected">Expected: the authenticated durable MP4 is read from private Supabase storage, uploaded to Outstand, and followed by per-account status.</div></div></div>
     <div class="step"><div class="step-number">5</div><div><h4>Verify outcomes</h4><p>Use Resume status if processing continues. Retry failed accounts only; successful accounts are excluded to avoid duplicates.</p></div></div>
     <div class="step"><div class="step-number">6</div><div><h4>Review analytics</h4><p>On Dashboard, open native post links and select Refresh performance for published items. Metrics depend on platform permissions.</p></div></div>
 
@@ -321,7 +328,7 @@
     <div class="footer-label">VideoMaker production walkthrough</div><div class="page-number">6</div>
   </section>
 
-  <section class="page">
+  <section class="page signoff">
     <div class="section-head"><div><div class="kicker">Sign-off</div><h2>Acceptance checklist</h2></div><div class="section-no">06</div></div>
 
     <div class="grid-2">
@@ -332,7 +339,7 @@
     </div>
 
     <h3>Troubleshooting during the demo</h3>
-    <table>
+    <table style="font-size: 10px; line-height: 1.25;">
       <tr><th>Symptom</th><th>Action</th></tr>
       <tr><td>The browser shows <code>/gate</code></td><td>Open <code>https://fragomen-mobility.vercel.app/login</code> directly.</td></tr>
       <tr><td>Invitation or reset link fails</td><td>Discard older emails, request one new link, and confirm it opens <code>fragomen-mobility.vercel.app</code>, never localhost.</td></tr>
@@ -342,7 +349,8 @@
       <tr><td>Monthly AI token limit reached</td><td>Raise the user's limit within the unallocated pool, increase the internal pool if approved, or wait for the next monthly reset. Provider credits and rate limits are managed separately.</td></tr>
       <tr><td>Voice model is slow on first use</td><td>Keep the tab open while the one-time browser model download completes.</td></tr>
       <tr><td>Render is slow</td><td>Use desktop Chrome, fewer assets, and a shorter 720p output.</td></tr>
-      <tr><td>Publishing account is missing</td><td>Select Refresh on Dashboard. Administrators can connect provider accounts; regular users must be assigned the exact account in Administration.</td></tr>
+      <tr><td>Video does not play inline</td><td>Refresh Dashboard and sign in again if prompted. Confirm the same video downloads; report the browser media error without sharing its private URL.</td></tr>
+      <tr><td>Publishing account is missing</td><td>Select Refresh on Dashboard. Verify platform and account name; regular users must be assigned the exact account in Administration.</td></tr>
       <tr><td>Publishing remains pending</td><td>Use Resume status; do not create a second post.</td></tr>
     </table>
 
@@ -351,7 +359,7 @@
       Complete pages 2 through 5 and stop before social publishing. This exercises the application's primary value path with no external posting side effect.
     </div>
 
-    <p class="small"><strong>Production URL:</strong> <a href="https://fragomen-mobility.vercel.app/login">https://fragomen-mobility.vercel.app/login</a><br>
+    <p class="small" style="margin-top: 8px; line-height: 1.25;"><strong>Production URL:</strong> <a href="https://fragomen-mobility.vercel.app/login">https://fragomen-mobility.vercel.app/login</a><br>
     <strong>Support evidence to capture:</strong> browser and time, failed step, visible message, and whether retry succeeded. Never include passwords, API keys, invitation tokens, or signed URLs.</p>
     <div class="footer-label">VideoMaker production walkthrough</div><div class="page-number">7</div>
   </section>

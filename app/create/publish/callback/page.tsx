@@ -9,13 +9,28 @@ export default function PublishCallbackPage() {
   useEffect(() => {
     const parameters = new URLSearchParams(window.location.search);
     const error = parameters.get("error") || parameters.get("error_description");
-    setMessage(error
-      ? `The account was not connected: ${error}`
-      : "Account connection returned successfully. Refresh connected accounts in the Publish step.");
-    if (window.opener) {
-      window.opener.postMessage({ type: "outstand-oauth-return", error }, window.location.origin);
-      window.setTimeout(() => window.close(), 1200);
+    async function completeConnection() {
+      let completionError = error;
+      try {
+        if (!completionError) {
+          const response = await fetch("/api/publish/accounts/complete", { method: "POST" });
+          const body = await response.json().catch(() => null) as { accounts?: Array<{ network: string; username: string }>; error?: string } | null;
+          if (!response.ok) completionError = body?.error || "The connected account could not be assigned.";
+          else {
+            const accountNames = body?.accounts?.map((account) => `${account.network} (${account.username})`).join(", ");
+            setMessage(`Connected ${accountNames || "social account"}. It is now available after refresh.`);
+          }
+        }
+      } catch {
+        completionError = "The connection service could not be reached. Try again.";
+      }
+      if (completionError) setMessage(`The account was not connected: ${completionError}`);
+      if (window.opener) {
+        window.opener.postMessage({ type: "outstand-oauth-return", error: completionError }, window.location.origin);
+        window.setTimeout(() => window.close(), 1800);
+      }
     }
+    void completeConnection();
   }, []);
 
   return (

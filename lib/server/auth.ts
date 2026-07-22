@@ -70,6 +70,20 @@ export class AuthorizationError extends Error {
   }
 }
 
+export async function requireUserApi() {
+  const { supabase, user } = await getAuthenticatedUser();
+  if (!user) throw new AuthorizationError("Authentication required.", 401);
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id,role,is_active")
+    .eq("id", user.id)
+    .single();
+  if (!profile?.is_active) throw new AuthorizationError("Active account required.", 403);
+
+  return { supabase, user, profile };
+}
+
 export async function requireAdminApi() {
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) throw new AuthorizationError("Authentication required.", 401);
