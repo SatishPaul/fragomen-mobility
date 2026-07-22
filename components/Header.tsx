@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { LogOut, Settings, Shield, Video } from "lucide-react";
+import { LogOut, Shield, UserRound, Video } from "lucide-react";
 import { useEffect, useState } from "react";
 import { brand } from "@/config/brand";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -37,9 +37,9 @@ export function Header() {
         </Link>
         <nav className="flex items-center gap-1" aria-label="Primary navigation">
           {profile && <Link href="/dashboard" className="px-3 py-2 text-sm text-muted hover:text-heading">Dashboard</Link>}
-          {profile?.role === "admin" && <Link href="/admin" title="Administration" className="p-2 text-muted hover:text-heading"><Shield className="h-4 w-4" /></Link>}
-          {profile && <Link href="/profile" title="Profile" className="p-2 text-muted hover:text-heading"><Settings className="h-4 w-4" /></Link>}
-          {profile && <form action="/auth/logout" method="post"><button type="submit" title="Sign out" className="p-2 text-muted hover:text-heading"><LogOut className="h-4 w-4" /></button></form>}
+          {profile?.role === "admin" && <Link href="/admin" title="Administration" className="flex items-center gap-2 px-2 py-2 text-sm text-muted hover:text-heading"><Shield className="h-4 w-4" aria-hidden="true" /><span className="hidden lg:inline">Admin</span></Link>}
+          {profile && <Link href="/profile" title="Profile and security" className="flex items-center gap-2 px-2 py-2 text-sm text-muted hover:text-heading"><UserRound className="h-4 w-4" aria-hidden="true" /><span className="hidden lg:inline">Account</span></Link>}
+          {profile && <form action="/auth/logout" method="post"><button type="submit" title="Sign out" className="flex items-center gap-2 px-2 py-2 text-sm text-muted hover:text-heading"><LogOut className="h-4 w-4" aria-hidden="true" /><span className="hidden lg:inline">Sign out</span></button></form>}
           {!profile && configured && <Link href="/login" className="px-3 py-2 text-sm text-muted hover:text-heading">Sign in</Link>}
           <Link href="/create" className="ml-2 flex items-center gap-2 bg-accent px-4 py-2 text-sm font-semibold text-accent-fg transition hover:brightness-110"><Video className="h-4 w-4" />Create video</Link>
         </nav>

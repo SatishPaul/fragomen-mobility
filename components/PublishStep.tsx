@@ -44,6 +44,10 @@ export function PublishStep() {
   const [activePostId, setActivePostId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const platforms = platformsForFormat(format);
+  const recommendedNetworkIds = new Set(platforms.map((platform) => platform.id));
+  const supportedAccounts = publish.accounts.filter((account) =>
+    !socialPlatforms.some((platform) => platform.id === account.network && platform.publishingEnabled === false));
+  const recommendedAccounts = supportedAccounts.filter((account) => recommendedNetworkIds.has(account.network));
   const output = getLatestRenderOutput();
   const busy = ["loading-accounts", "uploading", "publishing", "pending"].includes(publish.status);
 
@@ -79,6 +83,10 @@ export function PublishStep() {
       ? publish.selectedAccountIds.filter((accountId) => accountId !== id)
       : [...publish.selectedAccountIds, id];
     setPublish({ selectedAccountIds, error: undefined });
+  }
+
+  function selectAccounts(accountIds: string[]) {
+    setPublish({ selectedAccountIds: accountIds, error: undefined });
   }
 
   async function connectAccount() {
@@ -226,18 +234,25 @@ export function PublishStep() {
 
       {publish.status === "loading-accounts" && <p className="text-sm text-muted">Checking connected accounts…</p>}
       {publish.accounts.length > 0 && (
-        <fieldset disabled={busy} className="grid gap-3 sm:grid-cols-2">
+        <fieldset disabled={busy}>
           <legend className="sr-only">Publishing accounts</legend>
-          {publish.accounts.map((account) => (
-            <label key={account.id} className={`flex items-center gap-3 rounded-lg border p-3 ${socialPlatforms.some((platform) => platform.id === account.network && platform.publishingEnabled === false) ? "cursor-not-allowed opacity-60" : "cursor-pointer"} ${publish.selectedAccountIds.includes(account.id) ? "border-accent bg-raised" : "border-edge bg-background"}`}>
-              <input type="checkbox" checked={publish.selectedAccountIds.includes(account.id)} onChange={() => toggleAccount(account.id)} disabled={socialPlatforms.some((platform) => platform.id === account.network && platform.publishingEnabled === false)} className="h-4 w-4 accent-[var(--accent)]" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium text-heading">{account.nickname}</span>
-                <span className="block truncate text-xs text-muted">{account.network} · {account.username}</span>
-              </span>
-              <span className={`text-xs ${account.active && account.healthy ? "text-emerald-400" : "text-amber-300"}`}>{socialPlatforms.some((platform) => platform.id === account.network && platform.publishingEnabled === false) ? "Not yet supported" : account.active && account.healthy ? "Healthy" : "Reconnect"}</span>
-            </label>
-          ))}
+          <div className="mb-3 flex flex-wrap gap-2">
+            <button type="button" onClick={() => selectAccounts(recommendedAccounts.map((account) => account.id))} disabled={recommendedAccounts.length === 0} className="border border-edge px-3 py-2 text-xs font-medium text-body hover:border-accent disabled:opacity-50">Select recommended ({recommendedAccounts.length})</button>
+            <button type="button" onClick={() => selectAccounts(supportedAccounts.map((account) => account.id))} className="border border-edge px-3 py-2 text-xs font-medium text-body hover:border-accent">Select all supported ({supportedAccounts.length})</button>
+            <button type="button" onClick={() => selectAccounts([])} disabled={publish.selectedAccountIds.length === 0} className="border border-edge px-3 py-2 text-xs font-medium text-body hover:border-accent disabled:opacity-50">Clear selection</button>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {publish.accounts.map((account) => (
+              <label key={account.id} className={`flex items-center gap-3 rounded-lg border p-3 ${socialPlatforms.some((platform) => platform.id === account.network && platform.publishingEnabled === false) ? "cursor-not-allowed opacity-60" : "cursor-pointer"} ${publish.selectedAccountIds.includes(account.id) ? "border-accent bg-raised" : "border-edge bg-background"}`}>
+                <input type="checkbox" checked={publish.selectedAccountIds.includes(account.id)} onChange={() => toggleAccount(account.id)} disabled={socialPlatforms.some((platform) => platform.id === account.network && platform.publishingEnabled === false)} className="h-4 w-4 accent-[var(--accent)]" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-heading">{account.nickname}</span>
+                  <span className="block truncate text-xs text-muted">{account.network} · {account.username}</span>
+                </span>
+                <span className="text-right text-xs"><span className={`block ${account.active && account.healthy ? "text-emerald-400" : "text-amber-300"}`}>{socialPlatforms.some((platform) => platform.id === account.network && platform.publishingEnabled === false) ? "Not yet supported" : account.active && account.healthy ? "Healthy" : "Reconnect"}</span>{recommendedNetworkIds.has(account.network) && <span className="mt-1 block text-accent">Recommended</span>}</span>
+              </label>
+            ))}
+          </div>
         </fieldset>
       )}
       {publish.status !== "loading-accounts" && publish.accounts.length === 0 && !publish.error && (

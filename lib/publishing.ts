@@ -1,4 +1,5 @@
 import type { SocialNetwork } from "@/config/social-platforms";
+import type { OutstandSocialAccount } from "@/lib/outstand/types";
 
 export interface PublishOutcome {
   id: string;
@@ -21,4 +22,14 @@ export function failedAccountIds(outcomes: PublishOutcome[]): string[] {
 
 export function allOutcomesTerminal(outcomes: PublishOutcome[]): boolean {
   return outcomes.length > 0 && outcomes.every((outcome) => outcome.status !== "pending");
+}
+
+export function accessibleSocialAccounts(
+  accounts: OutstandSocialAccount[],
+  assignedAccountIds: Iterable<string>,
+  isAdministrator: boolean,
+): OutstandSocialAccount[] {
+  if (isAdministrator) return accounts;
+  const assignedIds = new Set(assignedAccountIds);
+  return accounts.filter((account) => assignedIds.has(account.id));
 }

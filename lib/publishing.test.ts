@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  accessibleSocialAccounts,
   allOutcomesTerminal,
   composePostContent,
   failedAccountIds,
@@ -18,6 +19,19 @@ function outcome(id: string, status: PublishOutcome["status"]): PublishOutcome {
 }
 
 describe("publishing decisions", () => {
+  const accounts = [
+    { id: "linkedin-1", nickname: "Company", network: "linkedin" as const, username: "company", isActive: true },
+    { id: "youtube-1", nickname: "Channel", network: "youtube" as const, username: "channel", isActive: true },
+  ];
+
+  it("shows administrators every connected account", () => {
+    expect(accessibleSocialAccounts(accounts, [], true)).toEqual(accounts);
+  });
+
+  it("limits regular users to assigned connected accounts", () => {
+    expect(accessibleSocialAccounts(accounts, ["linkedin-1"], false)).toEqual([accounts[0]]);
+  });
+
   it("composes trimmed title and caption without blank separators", () => {
     expect(composePostContent(" Title ", " Caption ")).toBe("Title\n\nCaption");
     expect(composePostContent("", " Caption ")).toBe("Caption");

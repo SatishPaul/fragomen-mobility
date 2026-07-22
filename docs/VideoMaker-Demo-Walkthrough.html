@@ -147,7 +147,7 @@
       Complete the core walkthrough through Render and Download. Only run the optional publishing section when a real social account has been intentionally assigned and the named destination is approved.
     </div>
 
-    <div class="cover-meta">Version 1.6 | 21 July 2026 | Desktop Chrome recommended</div>
+    <div class="cover-meta">Version 1.7 | 21 July 2026 | Desktop Chrome recommended</div>
   </section>
 
   <section class="page">
@@ -175,7 +175,7 @@
     <h3>First-time administrator activation</h3>
     <div class="step"><div class="step-number">1</div><div><h4>Open only the newest email</h4><p>Use the latest invitation or password-reset email sent to <strong>forweekend@gmail.com</strong>. Older links expire when a newer email is requested; check spam or junk if needed.</p></div></div>
     <div class="step"><div class="step-number">2</div><div><h4>Verify the production domain and choose a password</h4><p>The link must open <code>https://fragomen-mobility.vercel.app</code>. The app securely completes the link even when Supabase initially opens the home page. Set a password of at least eight characters.</p><div class="expected">Expected: the reset-password screen appears, then the app redirects to Dashboard after the password is saved.</div></div></div>
-    <div class="step"><div class="step-number">3</div><div><h4>Sign in</h4><p>At <code>/login</code>, enter the invited email and new password.</p><div class="expected">Expected: Dashboard, Admin, Profile, and Sign out controls appear in the header.</div></div></div>
+    <div class="step"><div class="step-number">3</div><div><h4>Sign in</h4><p>At <code>/login</code>, enter the invited email and new password.</p><div class="expected">Expected: clearly labeled Dashboard, Admin, Account, Sign out, and Create video controls appear in the header.</div></div></div>
 
     <h3>Prepare demo media</h3>
     <ul>
@@ -190,9 +190,9 @@
   <section class="page">
     <div class="section-head"><div><div class="kicker">Administrator path</div><h2>Invite and manage users</h2></div><div class="section-no">02</div></div>
 
-    <p>Run this section while signed in as <strong>forweekend@gmail.com</strong>. The shield icon in the header opens Administration.</p>
+    <p>Run this section while signed in as <strong>forweekend@gmail.com</strong>. Select the labeled <strong>Admin</strong> action in the header to open Administration.</p>
 
-    <div class="step"><div class="step-number">1</div><div><h4>Review the shared monthly AI token pool</h4><p>Select the shield icon or open <code>/admin</code>. Review <strong>Total pool</strong>, <strong>Assigned to active users</strong>, and <strong>Unallocated for administrators</strong>.</p><div class="expected">Expected: the three values reconcile and update immediately while limits are edited.</div></div></div>
+    <div class="step"><div class="step-number">1</div><div><h4>Review the shared monthly AI token pool</h4><p>Select <strong>Admin</strong> or open <code>/admin</code>. Review <strong>Total pool</strong>, <strong>Assigned to active users</strong>, and <strong>Unallocated for administrators</strong>.</p><div class="expected">Expected: the three values reconcile and update immediately while limits are edited.</div></div></div>
     <div class="step"><div class="step-number">2</div><div><h4>Invite with the correct role</h4><p>Enter the email and display name, then choose <strong>Regular user</strong> or <strong>Administrator</strong>. Keep administrator access limited to trusted operators.</p><div class="expected">Expected: "Invitation sent" appears. If the Auth identity already exists without a profile, the app recovers it and sends a password-setup email.</div></div></div>
     <div class="step"><div class="step-number">3</div><div><h4>Assign a regular-user limit</h4><p>A 2,000-token limit comes from the shared pool: assigning it from a 100,000-token pool leaves 98,000 unallocated. Set 0 to block remote AI use. Administrators share the unallocated balance.</p></div></div>
     <div class="step"><div class="step-number">4</div><div><h4>Raise the internal pool when approved</h4><p>Change <strong>Total monthly pool</strong> and select <strong>Update pool</strong>. This changes the app's safety ceiling only; it does not buy OpenRouter credits or raise Groq rate limits. Purchase provider capacity in OpenRouter billing or manage it in the Groq organization console.</p></div></div>
@@ -245,7 +245,7 @@
     <h3>What stays private</h3>
     <div class="grid-2">
       <div class="card"><div class="eyebrow">Browser only</div><h3>Source content</h3><p>Original photos, clips, draft state, render intermediates, and temporary upload URLs remain local to the browser workflow.</p></div>
-      <div class="card"><div class="eyebrow">Private Supabase storage</div><h3>Finished output</h3><p>The completed MP4 and its history record are user-owned. Dashboard downloads use short-lived signed URLs.</p></div>
+      <div class="card"><div class="eyebrow">Private Supabase storage</div><h3>Finished output</h3><p>The completed MP4 and its history record are user-owned. Dashboard playback and downloads use short-lived signed URLs.</p></div>
     </div>
     <div class="footer-label">VideoMaker production walkthrough</div><div class="page-number">4</div>
   </section>
@@ -260,19 +260,21 @@
       <tr><td>Tokens this month</td><td>Usage reflects AI and voice operations performed during the demo.</td></tr>
       <tr><td>Quota remaining</td><td>A regular user sees the assigned limit. An administrator sees the shared balance left after active-user assignments.</td></tr>
       <tr><td>Saved videos</td><td>The count increased after the successful render.</td></tr>
-      <tr><td>Recent videos</td><td>The new video appears with title, filename, date, and Download link.</td></tr>
+      <tr><td>Connected social accounts</td><td>LinkedIn and other available accounts remain visible after refresh with Ready or Reconnect status. Administrators see provider connections; regular users see assigned accounts.</td></tr>
+      <tr><td>Recent videos</td><td>The new video plays inline with browser controls and has an explicit Download action.</td></tr>
       <tr><td>Publishing activity</td><td>Remains empty unless the optional publishing test was completed.</td></tr>
       <tr><td>Social views and likes</td><td>Remain zero until published analytics are refreshed.</td></tr>
     </table>
 
     <h3>Verify profile management</h3>
-    <div class="step"><div class="step-number">1</div><div><h4>Open Profile</h4><p>Select the settings icon in the header.</p></div></div>
+    <div class="step"><div class="step-number">1</div><div><h4>Open Profile and security</h4><p>Select the labeled <strong>Account</strong> action in the header.</p></div></div>
     <div class="step"><div class="step-number">2</div><div><h4>Change display name</h4><p>Enter a display name and select <strong>Save profile</strong>.</p><div class="expected">Expected: "Profile updated" appears and the dashboard greeting uses the new name.</div></div></div>
     <div class="step"><div class="step-number">3</div><div><h4>Do not change email during a routine demo</h4><p>Email changes require confirmation from both addresses and can interrupt the walkthrough.</p></div></div>
 
     <h3>Verify password reset and logout</h3>
     <ol>
-      <li>Select Sign out in the header.</li>
+      <li>From Account, confirm that <strong>Reset password</strong> opens the secure reset-link form.</li>
+      <li>Select the labeled <strong>Sign out</strong> action in the header.</li>
       <li>Confirm that opening <code>/dashboard</code> redirects to Login.</li>
       <li>On Login, select <strong>Forgot password?</strong>.</li>
       <li>Enter the account email and select <strong>Send reset link</strong>.</li>
@@ -305,8 +307,8 @@
     </ul>
 
     <h3>Publish only after approval</h3>
-    <div class="step"><div class="step-number">1</div><div><h4>Load connected accounts</h4><p>In Step 6, refresh accounts if needed. If connecting a new account, allow the OAuth popup and complete provider consent.</p></div></div>
-    <div class="step"><div class="step-number">2</div><div><h4>Select the exact destination</h4><p>Verify both platform and account name. Do not select extra destinations.</p></div></div>
+    <div class="step"><div class="step-number">1</div><div><h4>Load connected accounts</h4><p>Confirm account health on Dashboard, then refresh in Step 6 if needed. Administrators can connect an account from either location by completing provider consent in the OAuth popup.</p></div></div>
+    <div class="step"><div class="step-number">2</div><div><h4>Select approved destinations</h4><p>Choose accounts individually, use <strong>Select recommended</strong> for destinations suited to the rendered aspect ratio, or use <strong>Select all supported</strong>. Verify every platform and account name; clear any destination that is not approved.</p></div></div>
     <div class="step"><div class="step-number">3</div><div><h4>Enter post content</h4><p>Add the caption and, where required, the title. Keep combined content under 5,000 characters.</p></div></div>
     <div class="step"><div class="step-number">4</div><div><h4>Review and publish</h4><p>Select the publish action. Read the confirmation dialog, verify every named account, and confirm only when approved.</p><div class="expected">Expected: the MP4 uploads directly to Outstand, then per-account status appears.</div></div></div>
     <div class="step"><div class="step-number">5</div><div><h4>Verify outcomes</h4><p>Use Resume status if processing continues. Retry failed accounts only; successful accounts are excluded to avoid duplicates.</p></div></div>
@@ -325,8 +327,8 @@
     <div class="grid-2">
       <div class="card avoid-break"><div class="eyebrow">Access</div><ul class="checklist"><li>Newest invitation or reset link works.</li><li>Login reaches Dashboard.</li><li>Shared pool arithmetic updates live.</li><li>Delete requires confirmation.</li><li>Regular users cannot open Admin.</li></ul></div>
       <div class="card avoid-break"><div class="eyebrow">Creation</div><ul class="checklist"><li>Media uploads and reorders.</li><li>Quota estimates appear before generation.</li><li>AI script is generated and editable.</li><li>Voiceover completes.</li><li>MP4 renders and downloads.</li></ul></div>
-      <div class="card avoid-break"><div class="eyebrow">Data</div><ul class="checklist"><li>Completed video appears in history.</li><li>Dashboard download works.</li><li>Usage and quota update.</li><li>Profile name saves.</li><li>Logout ends the session.</li></ul></div>
-      <div class="card avoid-break"><div class="eyebrow">Optional publishing</div><ul class="checklist"><li>Only assigned accounts appear.</li><li>Final confirmation names destinations.</li><li>Status resumes without duplication.</li><li>Native post links work.</li><li>Analytics refresh is manual.</li></ul></div>
+      <div class="card avoid-break"><div class="eyebrow">Data</div><ul class="checklist"><li>Completed video plays inline.</li><li>Dashboard download works.</li><li>Usage and quota update.</li><li>Profile name saves.</li><li>Password reset is available from Account.</li></ul></div>
+      <div class="card avoid-break"><div class="eyebrow">Optional publishing</div><ul class="checklist"><li>Connected accounts survive refresh.</li><li>Recommended multi-select matches format.</li><li>Final confirmation names destinations.</li><li>Status resumes without duplication.</li><li>Analytics refresh is manual.</li></ul></div>
     </div>
 
     <h3>Troubleshooting during the demo</h3>
@@ -340,7 +342,7 @@
       <tr><td>Monthly AI token limit reached</td><td>Raise the user's limit within the unallocated pool, increase the internal pool if approved, or wait for the next monthly reset. Provider credits and rate limits are managed separately.</td></tr>
       <tr><td>Voice model is slow on first use</td><td>Keep the tab open while the one-time browser model download completes.</td></tr>
       <tr><td>Render is slow</td><td>Use desktop Chrome, fewer assets, and a shorter 720p output.</td></tr>
-      <tr><td>Publishing account is missing</td><td>Ask the administrator to connect and assign that exact Outstand account.</td></tr>
+      <tr><td>Publishing account is missing</td><td>Select Refresh on Dashboard. Administrators can connect provider accounts; regular users must be assigned the exact account in Administration.</td></tr>
       <tr><td>Publishing remains pending</td><td>Use Resume status; do not create a second post.</td></tr>
     </table>
 
