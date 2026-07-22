@@ -1,7 +1,7 @@
 ---
 title: Add Shared Administrator Token Pool
 description: Replace duplicated user defaults with a live shared monthly allocation budget
-status: in-progress
+status: completed
 last_updated: 2026-07-21
 ---
 
@@ -16,7 +16,7 @@ Make the 100,000-token value a clear shared monthly administrative budget. User 
 * [x] Show and edit total, assigned, and unallocated values on the Admin page
 * [x] Add focused allocation tests and run the full validation suite
 * [x] Update and regenerate the production walkthrough
-* [ ] Apply the database migration, deploy, and validate production
+* [x] Apply the database migration, deploy, and validate production
 
 ## Decisions
 
@@ -37,6 +37,10 @@ Added an administrator-only provider-capacity check. It queries OpenRouter from 
 
 Applied migration `202607210001_shared_monthly_token_pool.sql` to the production Supabase database. Remote migration history confirms both repository migrations are applied.
 
+Deployed commit `9a802b0` through Vercel deployment `dpl_8PtN3X7sdhX6GgUpaaksi2ddSzof`. The deployment is Ready at the canonical production alias.
+
+Authenticated production verification confirms the shared pool is 100,000, the active regular-user allocation is 2,000 for `spiritdoctorjc@gmail.com`, and the shared unallocated administrator balance is 98,000. OpenRouter reports a paid-credits account with no fixed credit cap or monthly token limit. Groq is configured and exposes model-specific rate limits rather than a monthly token balance.
+
 ## Validation
 
 * Focused administrator policy suite: 9 tests passed.
@@ -47,9 +51,13 @@ Applied migration `202607210001_shared_monthly_token_pool.sql` to the production
 * VS Code reports no errors in the changed TypeScript, TSX, SQL, HTML, or Markdown files.
 * The version 1.6 walkthrough PDF has exactly 7 pages and contains the shared-pool, 100,000 minus 2,000, and provider-capacity guidance.
 * Raster inspection confirms the changed Admin walkthrough page is legible and unclipped.
+* Vercel deployment `dpl_8PtN3X7sdhX6GgUpaaksi2ddSzof` is Ready and serves commit `9a802b0` at `https://fragomen-mobility.vercel.app`.
+* Production `/login` returns HTTP 200. Signed-out requests to `/api/admin/users`, `/api/admin/provider-capacity`, and `/api/admin/quota` return HTTP 401.
+* A short-lived authenticated production check returned HTTP 200 from both administrator read APIs and confirmed a 100,000 total, 2,000 allocated, and 98,000 unallocated pool.
+* The same check confirmed OpenRouter paid credits with no reported fixed credit or token limit, plus configured Groq capacity. The temporary session was revoked and temporary credentials were deleted.
 
 ## Resume Context
 
-Current checkpoint: Implementation, tests, build, and version 1.6 walkthrough are complete. Production migration and deployment remain.
+Current checkpoint: Shared-pool implementation, migration, deployment, walkthrough synchronization, and production verification are complete.
 
-Next action: Apply `202607210001_shared_monthly_token_pool.sql` to the linked Supabase project, then deploy and validate production.
+Next action: No action remains for this work item.
