@@ -21,7 +21,7 @@ Make routine account and publishing tasks clear from the dashboard. Users must b
 * [x] Deploy and validate production
 * [x] Proxy private video playback through an authenticated same-origin route
 * [x] Persist newly connected social accounts to the connecting user
-* [ ] Revalidate and redeploy the playback and connection fixes
+* [x] Revalidate and redeploy the playback and connection fixes
 * [x] Add a permanent regression and security test playbook
 
 ## Decisions
@@ -79,9 +79,14 @@ Updated the production walkthrough to version 1.8 for authenticated same-origin 
 * Production dependency audit reports four high-severity `sharp` and libvips advisories inherited through Next.js and Kokoro/Hugging Face. npm reports no available fix; this remains an explicit release exception.
 * The version 1.8 walkthrough PDF has exactly 7 pages and contains all required playback, account-assignment, durable-upload, and troubleshooting guidance.
 * Visual inspection of changed PDF pages 1, 4, 5, 6, and 7 confirms all content is legible and unclipped.
+* Commit `62ab919` deployed successfully through Vercel deployment `dpl_8XKMD7fWifDrfJ8FwgbPdZYijcXV`; the canonical production alias is Ready.
+* Production signed-out smoke checks passed: Login `200`, Dashboard `307` to `/login?next=%2Fdashboard`, and accounts, video, and OAuth completion APIs `401`.
+* Production metadata confirms `OUTSTAND_API_KEY` is encrypted for Production and Preview. Vercel does not reveal its sensitive value through environment pull.
+* The scoped Supabase query confirmed JC (`spiritdoctorjc@gmail.com`) is an active regular user. The temporary production environment file was deleted immediately after verification.
+* The browser has no authenticated administrator session, so the pre-existing LinkedIn account could not be assigned or tested as JC without bypassing normal authentication. No assignment was attempted.
 
 ## Resume Context
 
-Current checkpoint: Same-origin playback, durable Outstand upload, generic post-OAuth assignment, and the permanent regression/security gate are implemented and pass 77 tests plus a production build.
+Current checkpoint: Same-origin playback, durable Outstand upload, generic post-OAuth assignment, and the permanent regression/security gate are deployed and pass 77 tests, a production build, and all signed-out smoke checks.
 
-Next action: Commit and deploy the validated change set, assign the pre-existing LinkedIn account to JC, and run the production smoke checks from `test.md`.
+Next action: Sign in normally as an administrator, assign `Satish Paul · linkedin` to JC in Administration, save, then sign in as JC and run the authenticated playback, connected-account, and approved publishing checks from `test.md`.
