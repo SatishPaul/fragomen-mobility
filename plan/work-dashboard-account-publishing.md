@@ -1,7 +1,7 @@
 ---
 title: Improve Dashboard Account and Publishing Workflows
 description: Clarify account navigation, persist social connections, support multi-site publishing, and preview recent videos
-status: in-progress
+status: blocked
 last_updated: 2026-07-22
 ---
 
@@ -24,7 +24,8 @@ Make routine account and publishing tasks clear from the dashboard. Users must b
 * [x] Revalidate and redeploy the playback and connection fixes
 * [x] Add a permanent regression and security test playbook
 * [x] Bind Outstand OAuth to the current user and persist the callback account
-* [ ] Validate and deploy LinkedIn reconnect behavior
+* [x] Deploy LinkedIn reconnect behavior
+* [ ] Verify an authenticated production LinkedIn reconnect
 
 ## Decisions
 
@@ -93,6 +94,9 @@ Updated the production walkthrough to version 1.8 for authenticated same-origin 
 * VS Code reports no errors in the changed completion route, callback page, or Outstand client.
 * Walkthrough version 1.9 was regenerated with Python Playwright and Edge. Direct PDF validation confirms seven nonblank pages and all required reconnect and multi-profile text.
 * Visual inspection of walkthrough pages 6 and 7 at print width confirms complete text, stable layout, and visible footers.
+* Commit `39a9ac1` was pushed to `main` and deployed through Vercel deployment `dpl_FiRKhYaYCK5ktJhFT3ADaqpTpzAh`; the canonical production alias is Ready.
+* Production signed-out smoke checks pass: Login `200`, Dashboard `307` to `/login?next=%2Fdashboard`, connected accounts `401`, and OAuth completion `401`.
+* The Vercel CLI reported a non-blocking npm dist-tag lookup warning before completing deployment and inspection.
 
 Production screenshots on 22 July show the user signed into LinkedIn in the same browser while VideoMaker still reports no connected account. Browser origin isolation prevents VideoMaker from reading LinkedIn cookies directly. Outstand returns the successful OAuth account as `account_id`, but the current callback discards it and completion accepts only IDs absent before OAuth. This rejects a reused LinkedIn connection.
 
@@ -100,6 +104,6 @@ Implemented tenant-bound OAuth with the current user ID, exact callback account 
 
 ## Resume Context
 
-Current checkpoint: Tenant-bound callback assignment and pending LinkedIn profile selection are implemented and pass the full 81-test regression gate and production build. Walkthrough version 1.9 is validated.
+Current checkpoint: Tenant-bound callback assignment and pending LinkedIn profile selection are deployed to production. Automated regression, build, walkthrough, and signed-out production checks pass.
 
-Next action: Check the final diff, commit and push the implementation, deploy to Vercel production, then run signed-out production smoke checks.
+Next action: While signed into VideoMaker and LinkedIn, select Connect for LinkedIn, complete consent, choose the intended profile if prompted, then refresh Dashboard and confirm the account remains visible.
